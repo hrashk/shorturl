@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreatingShortURL(t *testing.T) {
@@ -16,9 +19,7 @@ func TestCreatingShortURL(t *testing.T) {
 	key := invokeShortener(t, url, c)
 	lookupUrl := invokeLookup(t, key, c)
 
-	if lookupUrl != url {
-		t.Errorf("Expected %q, got %q", url, lookupUrl)
-	}
+	assert.Equal(t, url, lookupUrl, "Expected the original URL to match the lookup URL")
 }
 
 func invokeShortener(t *testing.T, url string, c ShortURLController) string {
@@ -28,26 +29,18 @@ func invokeShortener(t *testing.T, url string, c ShortURLController) string {
 	c.RouteRequest(w, r)
 
 	resp := w.Result()
-	if resp.StatusCode != http.StatusCreated {
-		t.Errorf("Expected status code %d, got %d", http.StatusCreated, resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Response status code")
 
 	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response body: %v", err)
-	}
+	require.NoError(t, err, "Failed to read response body")
 
 	body := string(bytes)
 
-	if !strings.HasPrefix(body, "http://localhost:8080/") { // Assuming the key is "1" for this test
-		t.Errorf("Expected body %q to start with http://localhost:8080/", body)
-	}
+	assert.Regexp(t, `^http://localhost:8080/`, body, "Expected body to start with http://localhost:8080/")
 
 	idx := strings.LastIndex(body, "/")
 	key := body[idx+1:]
-	if len(key) < 6 {
-		t.Errorf("Expected key length to be at least 6, got %d", len(key))
-	}
+	assert.GreaterOrEqual(t, len(key), 6, "Expected key length to be at least 6")
 
 	return key
 }
@@ -59,15 +52,10 @@ func invokeLookup(t *testing.T, key string, c ShortURLController) string {
 	c.RouteRequest(w, r)
 
 	resp := w.Result()
-	if resp.StatusCode != http.StatusTemporaryRedirect {
-		t.Errorf("Expected status code %d, got %d", http.StatusTemporaryRedirect, resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
 
 	loc := resp.Header.Get("Location")
-
-	if loc == "" {
-		t.Error("Expected Location header to be set")
-	}
+	assert.NotEmpty(t, loc, "Expected Location header to be set")
 
 	return loc
 }
@@ -81,7 +69,5 @@ func TestInvalidRequest(t *testing.T) {
 	c.RouteRequest(w, r)
 
 	resp := w.Result()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Expected status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Response status code")
 }
