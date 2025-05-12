@@ -17,9 +17,9 @@ func TestCreatingShortURL(t *testing.T) {
 	const url = "https://pkg.go.dev/cmp"
 
 	key := invokeShortener(t, url, c)
-	lookupUrl := invokeLookup(t, key, c)
+	lookupURL := invokeLookup(t, key, c)
 
-	assert.Equal(t, url, lookupUrl, "Expected the original URL to match the lookup URL")
+	assert.Equal(t, url, lookupURL, "Expected the original URL to match the lookup URL")
 }
 
 func invokeShortener(t *testing.T, url string, c ShortURLController) string {
@@ -29,6 +29,7 @@ func invokeShortener(t *testing.T, url string, c ShortURLController) string {
 	c.RouteRequest(w, r)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Response status code")
 
 	bytes, err := io.ReadAll(resp.Body)
@@ -52,6 +53,7 @@ func invokeLookup(t *testing.T, key string, c ShortURLController) string {
 	c.RouteRequest(w, r)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
 
 	loc := resp.Header.Get("Location")
@@ -69,6 +71,7 @@ func TestInvalidRequest(t *testing.T) {
 	c.RouteRequest(w, r)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Response status code")
 }
 
