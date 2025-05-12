@@ -19,11 +19,11 @@ type ShortURLController struct {
 	Storage      Storage
 }
 
-func NewShortURLController(keyGenerator ShortKeyGenerator, storage Storage) *ShortURLController {
-	return &ShortURLController{KeyGenerator: keyGenerator, Storage: storage}
+func NewShortURLController(keyGenerator ShortKeyGenerator, storage Storage) ShortURLController {
+	return ShortURLController{KeyGenerator: keyGenerator, Storage: storage}
 }
 
-func (c *ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
+func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -45,7 +45,7 @@ func (c *ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reque
 	io.WriteString(w, shortURL)
 }
 
-func (c *ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
+func (c ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
 	url, err := c.Storage.LookUp(key)
@@ -57,7 +57,7 @@ func (c *ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *htt
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (c *ShortURLController) RouteRequest(w http.ResponseWriter, r *http.Request) {
+func (c ShortURLController) RouteRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		c.CreateShortURL(w, r)
 	} else if r.Method == http.MethodGet && len(r.URL.Path) > 1 {
