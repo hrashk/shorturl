@@ -4,19 +4,19 @@ type Base62Generator struct {
 	counter chan uint64
 }
 
-func NewBase62Generator() *Base62Generator {
+func NewBase62Generator() Base62Generator {
 	c := make(chan uint64)
 
 	go count(c)
 
-	return &Base62Generator{c}
+	return Base62Generator{c}
 }
 func count(counter chan uint64) {
 	for i := uint64(1); ; i++ {
 		counter <- i
 	}
 }
-func (g *Base62Generator) Generate(url string) (key string) {
+func (g Base62Generator) Generate(url string) (key string) {
 	num := <-g.counter
 	key = encode(num)
 
