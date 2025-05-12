@@ -39,10 +39,10 @@ func (c *ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	shortUrl := "http://localhost:8080/" + key
+	shortURL := "http://localhost:8080/" + key
 
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, shortUrl)
+	io.WriteString(w, shortURL)
 }
 
 func (c *ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
