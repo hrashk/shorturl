@@ -5,22 +5,12 @@ import (
 	"net/http"
 )
 
-type ShortKeyGenerator interface {
-	Generate(url string) (key string)
-}
-
-type Storage interface {
-	Store(key string, url string) error
-	LookUp(key string) (url string, err error)
-}
-
 type ShortURLController struct {
-	KeyGenerator ShortKeyGenerator
-	Storage      Storage
+	Service Service
 }
 
-func NewShortURLController(keyGenerator ShortKeyGenerator, storage Storage) ShortURLController {
-	return ShortURLController{KeyGenerator: keyGenerator, Storage: storage}
+func NewShortURLController(service Service) ShortURLController {
+	return ShortURLController{service}
 }
 
 func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
@@ -32,14 +22,12 @@ func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 	}
 
 	url := string(raw)
-	key := c.KeyGenerator.Generate(url)
+	shortURL, err := c.Service.CreateShortURL(url)
 
-	if err := c.Storage.Store(key, url); err != nil {
+	if err != nil {
 		http.Error(w, "Failed to store URL", http.StatusInternalServerError)
 		return
 	}
-
-	shortURL := "http://localhost:8080/" + key
 
 	w.WriteHeader(http.StatusCreated)
 	io.WriteString(w, shortURL)
@@ -48,7 +36,7 @@ func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 func (c ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
-	url, err := c.Storage.LookUp(key)
+	url, err := c.Service.LookUp(key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

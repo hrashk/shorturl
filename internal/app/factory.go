@@ -1,5 +1,7 @@
 package app
 
 func NewInMemoryController() ShortURLController {
-	return NewShortURLController(NewBase62Generator(), NewInMemStorage())
+	s := NewShortURLService(NewBase62Generator(), NewInMemStorage())
+
+	return NewShortURLController(s)
 }
