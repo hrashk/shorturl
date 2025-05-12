@@ -9,11 +9,6 @@ type Storage interface {
 	LookUp(key string) (url string, err error)
 }
 
-type Service interface {
-	CreateShortURL(url string) (shortURL string, err error)
-	LookUp(key string) (url string, err error)
-}
-
 type ShortURLService struct {
 	KeyGenerator ShortKeyGenerator
 	Storage      Storage

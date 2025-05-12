@@ -5,6 +5,11 @@ import (
 	"net/http"
 )
 
+type Service interface {
+	CreateShortURL(url string) (shortURL string, err error)
+	LookUp(key string) (url string, err error)
+}
+
 type ShortURLController struct {
 	Service Service
 }
