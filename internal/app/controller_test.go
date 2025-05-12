@@ -71,3 +71,14 @@ func TestInvalidRequest(t *testing.T) {
 	resp := w.Result()
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Response status code")
 }
+
+func TestDifferentKeys(t *testing.T) {
+	c := NewInMemoryController()
+
+	const url = "https://pkg.go.dev/cmp"
+	const url2 = "https://pkg.go.dev/cmp/v2"
+
+	key := invokeShortener(t, url, c)
+	key2 := invokeShortener(t, url2, c)
+	assert.NotEqual(t, key, key2, "Expected different keys for different URLs")
+}
