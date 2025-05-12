@@ -71,3 +71,17 @@ func invokeLookup(t *testing.T, key string, c ShortURLController) string {
 
 	return loc
 }
+
+func TestInvalidRequest(t *testing.T) {
+	c := NewInMemoryController()
+
+	r := httptest.NewRequest(http.MethodPut, "/somekey", nil)
+	w := httptest.NewRecorder()
+
+	c.RouteRequest(w, r)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected status code %d, got %d", http.StatusBadRequest, resp.StatusCode)
+	}
+}
