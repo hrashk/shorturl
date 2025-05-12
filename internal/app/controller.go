@@ -9,12 +9,18 @@ type ShortKeyGenerator interface {
 	Generate(url string) (key string)
 }
 
-type ShortURLController struct {
-	KeyGenerator ShortKeyGenerator
+type Storage interface {
+	Store(key string, url string) error
+	LookUp(key string) (url string, err error)
 }
 
-func NewShortURLController(keyGenerator ShortKeyGenerator) *ShortURLController {
-	return &ShortURLController{keyGenerator}
+type ShortURLController struct {
+	KeyGenerator ShortKeyGenerator
+	Storage      Storage
+}
+
+func NewShortURLController(keyGenerator ShortKeyGenerator, storage Storage) *ShortURLController {
+	return &ShortURLController{KeyGenerator: keyGenerator, Storage: storage}
 }
 
 func (c *ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
@@ -26,14 +32,29 @@ func (c *ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reque
 	}
 
 	url := string(raw)
-	shortUrl := c.KeyGenerator.Generate(url)
+	key := c.KeyGenerator.Generate(url)
+
+	if err := c.Storage.Store(key, url); err != nil {
+		http.Error(w, "Failed to store URL", http.StatusInternalServerError)
+		return
+	}
+
+	shortUrl := "http://localhost:8080/" + key
 
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, "http://localhost:8080/"+shortUrl)
+	io.WriteString(w, shortUrl)
 }
 
 func (c *ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "https://pkg.go.dev/cmp", http.StatusTemporaryRedirect)
+	key := r.URL.Path[1:]
+
+	url, err := c.Storage.LookUp(key)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
 func (c *ShortURLController) RouteRequest(w http.ResponseWriter, r *http.Request) {
