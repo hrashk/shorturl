@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	c := app.NewShortURLController()
+	c := app.NewShortURLController(app.NewBase62Generator())
 
 	err := http.ListenAndServe(`:8080`, http.HandlerFunc(c.RouteRequest))
 	if err != nil {
