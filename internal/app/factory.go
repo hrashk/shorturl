@@ -1,6 +1,10 @@
 package app
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+)
 
 func NewInMemoryController() ShortURLController {
 	s := NewShortURLService(NewBase62Generator(), NewInMemStorage())
@@ -11,5 +15,12 @@ func NewInMemoryController() ShortURLController {
 func InMemoryHandler() http.Handler {
 	c := NewInMemoryController()
 
-	return http.HandlerFunc(c.RouteRequest)
+	r := chi.NewRouter()
+	r.Get("/{key}", c.RedirectToOriginalURL)
+	r.Post("/", c.CreateShortURL)
+	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Operation is not supported", http.StatusBadRequest)
+	})
+
+	return r
 }

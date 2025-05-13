@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,7 +22,13 @@ func TestExampleTestSuite(t *testing.T) {
 }
 
 func (suite *ControllerTestSuite) SetupTest() {
-	suite.srv = httptest.NewServer(loggingMiddleware(InMemoryHandler()))
+	h := InMemoryHandler()
+
+	r := chi.NewRouter()
+	r.Use(loggingMiddleware)
+	r.Mount("/", h)
+
+	suite.srv = httptest.NewServer(r)
 	suite.srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
