@@ -10,50 +10,56 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestCreatingShortURL(t *testing.T) {
-	srv := httptest.NewServer(loggingMiddleware(InMemoryHandler()))
-	defer srv.Close()
-	srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+type ControllerTestSuite struct {
+	suite.Suite
+	srv *httptest.Server
+}
+
+func TestExampleTestSuite(t *testing.T) {
+	suite.Run(t, &ControllerTestSuite{})
+}
+
+func (suite *ControllerTestSuite) SetupTest() {
+	suite.srv = httptest.NewServer(loggingMiddleware(InMemoryHandler()))
+	suite.srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
+}
 
+func (suite *ControllerTestSuite) TearDownTest() {
+	suite.srv.Close()
+}
+
+func (suite *ControllerTestSuite) TestCreatingShortURL() {
 	const url = "https://pkg.go.dev/cmp"
 
-	key := invokeShortener(t, url, srv)
-	lookupURL := invokeLookup(t, key, srv)
+	key := invokeShortener(suite.T(), url, suite.srv)
+	lookupURL := invokeLookup(suite.T(), key, suite.srv)
 
-	assert.Equal(t, url, lookupURL, "Expected the original URL to match the lookup URL")
+	suite.Equal(url, lookupURL, "Expected the original URL to match the lookup URL")
 }
 
-func TestInvalidRequest(t *testing.T) {
-	srv := httptest.NewServer(InMemoryHandler())
-	defer srv.Close()
+func (suite *ControllerTestSuite) TestInvalidRequest() {
+	req, err := http.NewRequest(http.MethodPut, suite.srv.URL+"/somekey", nil)
+	suite.Require().NoError(err, "Failed to create a request")
 
-	req, err := http.NewRequest(http.MethodPut, srv.URL+"/somekey", nil)
-	require.NoError(t, err, "Failed to create a request")
-
-	resp, err := srv.Client().Do(req)
-	require.NoError(t, err, "Failed to make request")
+	resp, err := suite.srv.Client().Do(req)
+	suite.Require().NoError(err, "Failed to make request")
 	defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Response status code")
+	suite.Equal(http.StatusBadRequest, resp.StatusCode, "Response status code")
 }
 
-func TestDifferentKeys(t *testing.T) {
-	srv := httptest.NewServer(loggingMiddleware(InMemoryHandler()))
-	defer srv.Close()
-	srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
+func (suite *ControllerTestSuite) TestDifferentKeys() {
 	const url = "https://pkg.go.dev/cmp"
 	const url2 = "https://pkg.go.dev/cmp/v2"
 
-	key := invokeShortener(t, url, srv)
-	key2 := invokeShortener(t, url2, srv)
-	assert.NotEqual(t, key, key2, "Expected different keys for different URLs")
+	key := invokeShortener(suite.T(), url, suite.srv)
+	key2 := invokeShortener(suite.T(), url2, suite.srv)
+	suite.NotEqual(key, key2, "Expected different keys for different URLs")
 }
 
 func invokeShortener(t *testing.T, url string, srv *httptest.Server) string {
