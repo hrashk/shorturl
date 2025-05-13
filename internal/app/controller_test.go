@@ -2,6 +2,7 @@ package app
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,24 +13,57 @@ import (
 )
 
 func TestCreatingShortURL(t *testing.T) {
-	c := NewInMemoryController()
+	srv := httptest.NewServer(loggingMiddleware(InMemoryHandler()))
+	defer srv.Close()
+	srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 
 	const url = "https://pkg.go.dev/cmp"
 
-	key := invokeShortener(t, url, c)
-	lookupURL := invokeLookup(t, key, c)
+	key := invokeShortener(t, url, srv)
+	lookupURL := invokeLookup(t, key, srv)
 
 	assert.Equal(t, url, lookupURL, "Expected the original URL to match the lookup URL")
 }
 
-func invokeShortener(t *testing.T, url string, c ShortURLController) string {
-	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(url))
-	w := httptest.NewRecorder()
+func TestInvalidRequest(t *testing.T) {
+	srv := httptest.NewServer(InMemoryHandler())
+	defer srv.Close()
 
-	c.RouteRequest(w, r)
+	req, err := http.NewRequest(http.MethodPut, srv.URL+"/somekey", nil)
+	require.NoError(t, err, "Failed to create a request")
 
-	resp := w.Result()
+	resp, err := srv.Client().Do(req)
+	require.NoError(t, err, "Failed to make request")
 	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Response status code")
+}
+
+func TestDifferentKeys(t *testing.T) {
+	srv := httptest.NewServer(loggingMiddleware(InMemoryHandler()))
+	defer srv.Close()
+	srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	const url = "https://pkg.go.dev/cmp"
+	const url2 = "https://pkg.go.dev/cmp/v2"
+
+	key := invokeShortener(t, url, srv)
+	key2 := invokeShortener(t, url2, srv)
+	assert.NotEqual(t, key, key2, "Expected different keys for different URLs")
+}
+
+func invokeShortener(t *testing.T, url string, srv *httptest.Server) string {
+	req, err := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(url))
+	require.NoError(t, err, "Failed to create a request")
+
+	resp, err := srv.Client().Do(req)
+	require.NoError(t, err, "Failed to make request")
+	defer resp.Body.Close()
+
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Response status code")
 
 	bytes, err := io.ReadAll(resp.Body)
@@ -46,14 +80,11 @@ func invokeShortener(t *testing.T, url string, c ShortURLController) string {
 	return key
 }
 
-func invokeLookup(t *testing.T, key string, c ShortURLController) string {
-	r := httptest.NewRequest(http.MethodGet, "/"+key, nil)
-	w := httptest.NewRecorder()
-
-	c.RouteRequest(w, r)
-
-	resp := w.Result()
+func invokeLookup(t *testing.T, key string, srv *httptest.Server) string {
+	resp, err := srv.Client().Get(srv.URL + "/" + key)
+	require.NoError(t, err, "Failed to make request")
 	defer resp.Body.Close()
+
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
 
 	loc := resp.Header.Get("Location")
@@ -62,26 +93,23 @@ func invokeLookup(t *testing.T, key string, c ShortURLController) string {
 	return loc
 }
 
-func TestInvalidRequest(t *testing.T) {
-	c := NewInMemoryController()
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Log the incoming request
+		log.Printf("Request: %s %s", r.Method, r.URL)
 
-	r := httptest.NewRequest(http.MethodPut, "/somekey", nil)
-	w := httptest.NewRecorder()
+		// Capture the response using a ResponseRecorder
+		rec := httptest.NewRecorder()
+		next.ServeHTTP(rec, r)
 
-	c.RouteRequest(w, r)
+		// Log the response
+		log.Printf("Response: %d %s", rec.Code, rec.Body.String())
 
-	resp := w.Result()
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Response status code")
-}
-
-func TestDifferentKeys(t *testing.T) {
-	c := NewInMemoryController()
-
-	const url = "https://pkg.go.dev/cmp"
-	const url2 = "https://pkg.go.dev/cmp/v2"
-
-	key := invokeShortener(t, url, c)
-	key2 := invokeShortener(t, url2, c)
-	assert.NotEqual(t, key, key2, "Expected different keys for different URLs")
+		// Copy the recorded response to the actual response writer
+		for k, v := range rec.Header() {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(rec.Code)
+		_, _ = io.Copy(w, rec.Body)
+	})
 }
