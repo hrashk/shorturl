@@ -35,7 +35,9 @@ func (suite *ControllerTestSuite) SetupTest() {
 }
 
 func (suite *ControllerTestSuite) TearDownTest() {
-	suite.srv.Close()
+	if suite.srv != nil {
+		suite.srv.Close()
+	}
 }
 
 func (suite *ControllerTestSuite) TestCreatingShortURL() {
