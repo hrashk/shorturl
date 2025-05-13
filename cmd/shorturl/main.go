@@ -7,9 +7,8 @@ import (
 )
 
 func main() {
-	c := app.NewInMemoryController()
+	err := http.ListenAndServe(`:8080`, app.InMemoryHandler())
 
-	err := http.ListenAndServe(`:8080`, http.HandlerFunc(c.RouteRequest))
 	if err != nil {
 		panic(err)
 	}
