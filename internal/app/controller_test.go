@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,8 +34,8 @@ func (suite *ControllerTestSuite) TearDownTest() {
 func (suite *ControllerTestSuite) TestCreatingShortURL() {
 	const url = "https://pkg.go.dev/cmp"
 
-	key := invokeShortener(suite.T(), url, suite.srv)
-	lookupURL := invokeLookup(suite.T(), key, suite.srv)
+	key := suite.invokeShortener(url)
+	lookupURL := suite.invokeLookup(key)
 
 	suite.Equal(url, lookupURL, "Expected the original URL to match the lookup URL")
 }
@@ -57,44 +55,44 @@ func (suite *ControllerTestSuite) TestDifferentKeys() {
 	const url = "https://pkg.go.dev/cmp"
 	const url2 = "https://pkg.go.dev/cmp/v2"
 
-	key := invokeShortener(suite.T(), url, suite.srv)
-	key2 := invokeShortener(suite.T(), url2, suite.srv)
+	key := suite.invokeShortener(url)
+	key2 := suite.invokeShortener(url2)
 	suite.NotEqual(key, key2, "Expected different keys for different URLs")
 }
 
-func invokeShortener(t *testing.T, url string, srv *httptest.Server) string {
-	req, err := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(url))
-	require.NoError(t, err, "Failed to create a request")
+func (suite *ControllerTestSuite) invokeShortener(url string) string {
+	req, err := http.NewRequest(http.MethodPost, suite.srv.URL, strings.NewReader(url))
+	suite.Require().NoError(err, "Failed to create a request")
 
-	resp, err := srv.Client().Do(req)
-	require.NoError(t, err, "Failed to make request")
+	resp, err := suite.srv.Client().Do(req)
+	suite.Require().NoError(err, "Failed to make request")
 	defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Response status code")
+	suite.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
 
 	bytes, err := io.ReadAll(resp.Body)
-	require.NoError(t, err, "Failed to read response body")
+	suite.Require().NoError(err, "Failed to read response body")
 
 	body := string(bytes)
 
-	assert.Regexp(t, `^http://localhost:8080/`, body, "Expected body to start with http://localhost:8080/")
+	suite.Regexp(`^http://localhost:8080/`, body, "Expected body to start with http://localhost:8080/")
 
 	idx := strings.LastIndex(body, "/")
 	key := body[idx+1:]
-	assert.GreaterOrEqual(t, len(key), 6, "Expected key length to be at least 6")
+	suite.GreaterOrEqual(len(key), 6, "Expected key length to be at least 6")
 
 	return key
 }
 
-func invokeLookup(t *testing.T, key string, srv *httptest.Server) string {
-	resp, err := srv.Client().Get(srv.URL + "/" + key)
-	require.NoError(t, err, "Failed to make request")
+func (suite *ControllerTestSuite) invokeLookup(key string) string {
+	resp, err := suite.srv.Client().Get(suite.srv.URL + "/" + key)
+	suite.Require().NoError(err, "Failed to make request")
 	defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
+	suite.Equal(http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
 
 	loc := resp.Header.Get("Location")
-	assert.NotEmpty(t, loc, "Expected Location header to be set")
+	suite.NotEmpty(loc, "Expected Location header to be set")
 
 	return loc
 }
