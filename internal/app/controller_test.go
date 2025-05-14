@@ -2,7 +2,6 @@ package app
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,7 +24,7 @@ func (suite *ControllerTestSuite) SetupTest() {
 	h := InMemoryHandler()
 
 	r := chi.NewRouter()
-	r.Use(loggingMiddleware)
+	r.Use(suite.loggingMiddleware)
 	r.Mount("/", h)
 
 	suite.srv = httptest.NewServer(r)
@@ -106,19 +105,15 @@ func (suite *ControllerTestSuite) invokeLookup(key string) string {
 	return loc
 }
 
-func loggingMiddleware(next http.Handler) http.Handler {
+func (suite *ControllerTestSuite) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Log the incoming request
-		log.Printf("Request: %s %s", r.Method, r.URL)
+		suite.T().Logf("Request: %s %s", r.Method, r.URL)
 
-		// Capture the response using a ResponseRecorder
 		rec := httptest.NewRecorder()
 		next.ServeHTTP(rec, r)
 
-		// Log the response
-		log.Printf("Response: %d %s", rec.Code, rec.Body.String())
+		suite.T().Logf("Response: %d %s", rec.Code, rec.Body.String())
 
-		// Copy the recorded response to the actual response writer
 		for k, v := range rec.Header() {
 			w.Header()[k] = v
 		}
