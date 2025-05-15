@@ -1,25 +1,28 @@
 package app
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 type InMemStorage struct {
-	data map[string]string
+	data *sync.Map
 }
 
 func NewInMemStorage() InMemStorage {
 	return InMemStorage{
-		data: make(map[string]string),
+		data: &sync.Map{},
 	}
 }
 func (s InMemStorage) Store(key string, url string) error {
-	s.data[key] = url
+	s.data.Store(key, url)
 
 	return nil
 }
 func (s InMemStorage) LookUp(key string) (url string, err error) {
-	url, ok := s.data[key]
+	v, ok := s.data.Load(key)
 	if !ok {
 		return "", errors.New("key not found: " + key)
 	}
-	return url, nil
+	return v.(string), nil
 }
