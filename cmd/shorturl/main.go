@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	err := http.ListenAndServe(`:8080`, app.InMemoryHandler())
+	err := http.ListenAndServe(`:8080`, app.NewHandler())
 
 	if err != nil {
 		panic(err)

@@ -21,7 +21,9 @@ func TestExampleTestSuite(t *testing.T) {
 }
 
 func (suite *ControllerTestSuite) SetupTest() {
-	h := InMemoryHandler()
+	config.redirectBaseURL = "http://localhost:8888"
+
+	h := NewHandler()
 
 	r := chi.NewRouter()
 	r.Use(suite.loggingMiddleware)
@@ -83,7 +85,7 @@ func (suite *ControllerTestSuite) invokeShortener(url string) string {
 
 	body := string(bytes)
 
-	suite.Regexp(`^http://localhost:8080/`, body, "Expected body to start with http://localhost:8080/")
+	suite.Regexp("^"+config.redirectBaseURL, body, "Expected body to start with http://localhost:8080/")
 
 	idx := strings.LastIndex(body, "/")
 	key := body[idx+1:]

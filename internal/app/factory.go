@@ -12,7 +12,7 @@ func NewInMemoryController() ShortURLController {
 	return NewShortURLController(s)
 }
 
-func InMemoryHandler() http.Handler {
+func NewHandler() http.Handler {
 	c := NewInMemoryController()
 
 	r := chi.NewRouter()
