@@ -11,16 +11,16 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ControllerTestSuite struct {
+type ControllerSuite struct {
 	suite.Suite
 	srv *httptest.Server
 }
 
-func TestExampleTestSuite(t *testing.T) {
-	suite.Run(t, &ControllerTestSuite{})
+func TestControllerSuite(t *testing.T) {
+	suite.Run(t, &ControllerSuite{})
 }
 
-func (suite *ControllerTestSuite) SetupTest() {
+func (suite *ControllerSuite) SetupTest() {
 	config.redirectBaseURL = "http://localhost:8888"
 
 	h := NewHandler()
@@ -35,13 +35,13 @@ func (suite *ControllerTestSuite) SetupTest() {
 	}
 }
 
-func (suite *ControllerTestSuite) TearDownTest() {
+func (suite *ControllerSuite) TearDownTest() {
 	if suite.srv != nil {
 		suite.srv.Close()
 	}
 }
 
-func (suite *ControllerTestSuite) TestCreatingShortURL() {
+func (suite *ControllerSuite) TestCreatingShortURL() {
 	const url = "https://pkg.go.dev/cmp"
 
 	key := suite.invokeShortener(url)
@@ -50,7 +50,7 @@ func (suite *ControllerTestSuite) TestCreatingShortURL() {
 	suite.Equal(url, lookupURL, "Expected the original URL to match the lookup URL")
 }
 
-func (suite *ControllerTestSuite) TestInvalidRequest() {
+func (suite *ControllerSuite) TestInvalidRequest() {
 	req, err := http.NewRequest(http.MethodPut, suite.srv.URL+"/somekey", nil)
 	suite.Require().NoError(err, "Failed to create a request")
 
@@ -61,7 +61,7 @@ func (suite *ControllerTestSuite) TestInvalidRequest() {
 	suite.Equal(http.StatusBadRequest, resp.StatusCode, "Response status code")
 }
 
-func (suite *ControllerTestSuite) TestDifferentKeys() {
+func (suite *ControllerSuite) TestDifferentKeys() {
 	const url = "https://pkg.go.dev/cmp"
 	const url2 = "https://pkg.go.dev/cmp/v2"
 
@@ -70,7 +70,7 @@ func (suite *ControllerTestSuite) TestDifferentKeys() {
 	suite.NotEqual(key, key2, "Expected different keys for different URLs")
 }
 
-func (suite *ControllerTestSuite) invokeShortener(url string) string {
+func (suite *ControllerSuite) invokeShortener(url string) string {
 	req, err := http.NewRequest(http.MethodPost, suite.srv.URL, strings.NewReader(url))
 	suite.Require().NoError(err, "Failed to create a request")
 
@@ -94,7 +94,7 @@ func (suite *ControllerTestSuite) invokeShortener(url string) string {
 	return key
 }
 
-func (suite *ControllerTestSuite) invokeLookup(key string) string {
+func (suite *ControllerSuite) invokeLookup(key string) string {
 	resp, err := suite.srv.Client().Get(suite.srv.URL + "/" + key)
 	suite.Require().NoError(err, "Failed to make request")
 	defer resp.Body.Close()
@@ -107,7 +107,7 @@ func (suite *ControllerTestSuite) invokeLookup(key string) string {
 	return loc
 }
 
-func (suite *ControllerTestSuite) loggingMiddleware(next http.Handler) http.Handler {
+func (suite *ControllerSuite) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		suite.T().Logf("Request: %s %s", r.Method, r.URL)
 
