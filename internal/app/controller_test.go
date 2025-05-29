@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,13 +22,9 @@ func TestControllerSuite(t *testing.T) {
 func (suite *ControllerSuite) SetupTest() {
 	config.redirectBaseURL = "http://localhost:8888"
 
-	h := NewHandler()
+	h := NewHandlerWithLogger(suite)
 
-	r := chi.NewRouter()
-	r.Use(suite.loggingMiddleware)
-	r.Mount("/", h)
-
-	suite.srv = httptest.NewServer(r)
+	suite.srv = httptest.NewServer(h)
 	suite.srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -107,19 +102,6 @@ func (suite *ControllerSuite) invokeLookup(key string) string {
 	return loc
 }
 
-func (suite *ControllerSuite) loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.T().Logf("Request: %s %s", r.Method, r.URL)
-
-		rec := httptest.NewRecorder()
-		next.ServeHTTP(rec, r)
-
-		suite.T().Logf("Response: %d %s", rec.Code, rec.Body.String())
-
-		for k, v := range rec.Header() {
-			w.Header()[k] = v
-		}
-		w.WriteHeader(rec.Code)
-		_, _ = io.Copy(w, rec.Body)
-	})
+func (suite *ControllerSuite) Info(msg string, fields ...any) {
+	suite.T().Logf(msg, fields...)
 }
