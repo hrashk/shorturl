@@ -16,30 +16,39 @@ ShortURL is a URL shortening service written in Go. It provides a simple and eff
 
 ## Installation
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/yourusername/shorturl.git
-    cd shorturl
-    ```
+1. Build the project:
+```bash
+go build -C ./cmd/shorturl
+```
 
-2. Build the project:
-    ```bash
-    go build
-    ```
-
-3. Run the application:
-    ```bash
-    ./shorturl
-    ```
+2. Start the service:
+```bash
+./cmd/shorturl/shorturl
+```
 
 ## Configuration
 
-Update the `config.yaml` file to set up database credentials and other application settings.
+You may specify either environment variables
+```bash
+SERVER_ADDRESS=":9999" BASE_URL="http://example.com" ./cmd/shorturl/shorturl
+```
+
+and/or command-line args
+```bash
+./cmd/shorturl/shorturl -a ":9999" -b "http://example.com"
+```
 
 ## Usage
 
-- Access the web interface at `http://localhost:8080`.
-- Use the API to programmatically shorten URLs.
+Example of shortening a URL
+```bash
+curl -X POST http://localhost:8080/ -d "https://pkg.go.dev/cmp"
+```
+
+Example of redirecting a short URL
+```bash
+curl -v http://localhost:8080/aaaaab
+```
 
 ## License
 
