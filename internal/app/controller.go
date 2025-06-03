@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 )
@@ -48,4 +49,36 @@ func (c ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http
 	}
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+type ShortURLRequest struct {
+	URL string `json:"url"`
+}
+
+type ShortURLResponse struct {
+	Result string `json:"result"`
+}
+
+func (c ShortURLController) ShortenAPI(w http.ResponseWriter, r *http.Request) {
+	var req ShortURLRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+		return
+	}
+
+	shortURL, err := c.Service.CreateShortURL(req.URL)
+	if err != nil {
+		http.Error(w, "Failed to store URL", http.StatusInternalServerError)
+		return
+	}
+
+	resp := ShortURLResponse{shortURL}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
 }

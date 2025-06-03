@@ -72,7 +72,7 @@ func (suite *ControllerSuite) TestShortenApi() {
 	suite.Require().NoError(err, "Failed to POST")
 	defer resp.Body.Close()
 
-	suite.Equal(http.StatusOK, resp.StatusCode, "Response status code")
+	suite.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
 
 	bytes, err := io.ReadAll(resp.Body)
 	suite.Require().NoError(err, "Failed to read response body")

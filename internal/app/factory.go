@@ -28,6 +28,7 @@ func NewHandlerWithLogger(logger Logger) http.Handler {
 
 	r.Get("/{key}", c.RedirectToOriginalURL)
 	r.Post("/", c.CreateShortURL)
+	r.Post("/api/shorten", c.ShortenAPI)
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Operation is not supported", http.StatusBadRequest)
 	})
