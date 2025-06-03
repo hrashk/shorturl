@@ -65,6 +65,22 @@ func (suite *ControllerSuite) TestDifferentKeys() {
 	suite.NotEqual(key, key2, "Expected different keys for different URLs")
 }
 
+func (suite *ControllerSuite) TestShortenApi() {
+	resp, err := suite.srv.Client().Post(suite.srv.URL+"/api/shorten",
+		"application/json",
+		strings.NewReader(`{"url": "https://pkg.go.dev/cmp"}`))
+	suite.Require().NoError(err, "Failed to POST")
+	defer resp.Body.Close()
+
+	suite.Equal(http.StatusOK, resp.StatusCode, "Response status code")
+
+	bytes, err := io.ReadAll(resp.Body)
+	suite.Require().NoError(err, "Failed to read response body")
+
+	body := string(bytes)
+	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+}
+
 func (suite *ControllerSuite) invokeShortener(url string) string {
 	req, err := http.NewRequest(http.MethodPost, suite.srv.URL, strings.NewReader(url))
 	suite.Require().NoError(err, "Failed to create a request")
