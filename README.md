@@ -50,6 +50,19 @@ Example of redirecting a short URL
 curl -v http://localhost:8080/aaaaab
 ```
 
+Example of calling REST API
+```bash
+curl -X POST http://localhost:8080/api/shorten -d '{"url": "https://pkg.go.dev/cmp"}'
+```
+
+Example of calling REST API with gzip output
+```bash
+curl -X POST http://localhost:8080/api/shorten \
+-H "Accept-Encoding: gzip" \
+-d '{"url": "https://pkg.go.dev/cmp"}' \
+-o some.gz
+```
+
 ## License
 
 This project is licensed under the BSD License.

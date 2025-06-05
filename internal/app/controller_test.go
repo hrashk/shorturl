@@ -121,3 +121,24 @@ func (suite *ControllerSuite) invokeLookup(key string) string {
 func (suite *ControllerSuite) Info(msg string, fields ...any) {
 	suite.T().Logf(msg, fields...)
 }
+
+func (suite *ControllerSuite) TestReceivingGzip() {
+	req, err := http.NewRequest(http.MethodPost, suite.srv.URL+"/api/shorten",
+		strings.NewReader(`{"url": "https://pkg.go.dev/cmp"}`))
+	suite.Require().NoError(err, "Failed to POST")
+
+	req.Header.Add("Accept-Encoding", "gzip")
+
+	resp, err := suite.srv.Client().Do(req)
+	suite.Require().NoError(err, "Failed to POST")
+	defer resp.Body.Close()
+
+	suite.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
+	suite.Equal("gzip", resp.Header.Get("Content-Encoding"), "Content encoding")
+
+	bytes, err := io.ReadAll(resp.Body)
+	suite.Require().NoError(err, "Failed to read response body")
+
+	body := string(bytes)
+	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+}
