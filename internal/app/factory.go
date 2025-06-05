@@ -6,10 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Logger interface {
-	Info(msg string, fields ...any)
-}
-
 func NewInMemoryController() ShortURLController {
 	s := NewShortURLService(NewBase62Generator(), NewInMemStorage())
 
@@ -20,11 +16,11 @@ func NewHandler() http.Handler {
 	return NewHandlerWithLogger(NewZeroLogger())
 }
 
-func NewHandlerWithLogger(logger Logger) http.Handler {
+func NewHandlerWithLogger(logger logger) http.Handler {
 	c := NewInMemoryController()
 
 	r := chi.NewRouter()
-	r.Use(wrapper{logger}.middleware)
+	r.Use(loggingMiddleware(logger))
 	r.Use(newGzipDeflator())
 
 	r.Get("/{key}", c.RedirectToOriginalURL)

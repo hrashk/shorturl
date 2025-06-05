@@ -8,6 +8,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type logger interface {
+	Info(msg string, fields ...any)
+}
+
 type ZeroLogger struct {
 	logger zerolog.Logger
 }
@@ -22,57 +26,44 @@ func (zl ZeroLogger) Info(msg string, fields ...any) {
 	zl.logger.Info().Fields(fields).Msg(msg)
 }
 
-type wrapper struct {
-	Logger
+func loggingMiddleware(logger logger) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		logFn := func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			rw := loggingResponseWriter{
+				ResponseWriter: w,
+			}
+			h.ServeHTTP(&rw, r)
+
+			duration := time.Since(start)
+
+			logger.Info("",
+				"uri", r.RequestURI,
+				"method", r.Method,
+				"status", rw.status,
+				"duration", duration,
+				"size", rw.size,
+			)
+		}
+
+		return http.HandlerFunc(logFn)
+	}
 }
 
-func (lw wrapper) middleware(h http.Handler) http.Handler {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		responseData := responseData{
-			status: 0,
-			size:   0,
-		}
-		rw := loggingResponseWriter{
-			ResponseWriter: w,
-			responseData:   responseData,
-		}
-		h.ServeHTTP(&rw, r)
-
-		duration := time.Since(start)
-
-		lw.Info("",
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"status", responseData.status,
-			"duration", duration,
-			"size", responseData.size,
-		)
-	}
-
-	return http.HandlerFunc(logFn)
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	size   int
 }
 
-type (
-	responseData struct {
-		status int
-		size   int
-	}
-
-	loggingResponseWriter struct {
-		http.ResponseWriter
-		responseData responseData
-	}
-)
-
-func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size
+func (w *loggingResponseWriter) Write(b []byte) (int, error) {
+	size, err := w.ResponseWriter.Write(b)
+	w.size += size
 	return size, err
 }
 
-func (r *loggingResponseWriter) WriteHeader(statusCode int) {
-	r.ResponseWriter.WriteHeader(statusCode)
-	r.responseData.status = statusCode
+func (w *loggingResponseWriter) WriteHeader(statusCode int) {
+	w.ResponseWriter.WriteHeader(statusCode)
+	w.status = statusCode
 }
