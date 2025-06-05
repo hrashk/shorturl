@@ -22,6 +22,7 @@ func NewHandlerWithLogger(logger logger) http.Handler {
 	r := chi.NewRouter()
 	r.Use(loggingMiddleware(logger))
 	r.Use(newGzipDeflator())
+	r.Use(newGzipInflator())
 
 	r.Get("/{key}", c.RedirectToOriginalURL)
 	r.Post("/", c.CreateShortURL)

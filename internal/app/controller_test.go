@@ -1,6 +1,9 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -141,4 +144,43 @@ func (suite *ControllerSuite) TestReceivingGzip() {
 
 	body := string(bytes)
 	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+}
+
+func (suite *ControllerSuite) TestSendingGzip() {
+	b, err := compress([]byte(`{"url": "https://pkg.go.dev/cmp"}`))
+	suite.Require().NoError(err, "Failed to compress")
+
+	req, err := http.NewRequest(http.MethodPost, suite.srv.URL+"/api/shorten",
+		bytes.NewReader(b))
+	suite.Require().NoError(err, "Failed to POST")
+
+	req.Header.Add("Content-Encoding", "gzip")
+
+	resp, err := suite.srv.Client().Do(req)
+	suite.Require().NoError(err, "Failed to POST")
+	defer resp.Body.Close()
+
+	suite.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
+
+	bytes, err := io.ReadAll(resp.Body)
+	suite.Require().NoError(err, "Failed to read response body")
+
+	body := string(bytes)
+	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+}
+
+func compress(data []byte) ([]byte, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+
+	_, err := w.Write(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed write data to compress temporary buffer: %v", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed compress data: %v", err)
+	}
+	return b.Bytes(), nil
 }
