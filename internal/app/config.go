@@ -1,16 +1,22 @@
 package app
 
 import (
+	"fmt"
 	"net"
 	"net/url"
+)
+
+const (
+	DefaultServerAddress = ":8080"
+	DefaultBaseURL       = "http://localhost:8080"
 )
 
 var config = struct {
 	listenAddr      string
 	redirectBaseURL string
 }{
-	listenAddr:      ":8080",
-	redirectBaseURL: "http://localhost:8080",
+	listenAddr:      DefaultServerAddress,
+	redirectBaseURL: DefaultBaseURL,
 }
 
 func GetListenAddr() string {
@@ -20,7 +26,7 @@ func GetListenAddr() string {
 func SetListenAddr(addr string) {
 	_, port, err := net.SplitHostPort(addr)
 	if err != nil || port == "" {
-		panic("listen address must be in the form host:port")
+		panic(fmt.Sprintf("Invalid server address %s", addr))
 	}
 	config.listenAddr = addr
 }
@@ -32,7 +38,7 @@ func GetRedirectBaseURL() string {
 func SetRedirectBaseURL(baseURL string) {
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		panic("redirect base URL must be a valid absolute URL (e.g., http://example.com)")
+		panic(fmt.Sprintf("Invalid base URL %s.", baseURL))
 	}
 	config.redirectBaseURL = baseURL
 }

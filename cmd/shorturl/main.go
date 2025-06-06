@@ -21,8 +21,8 @@ func main() {
 func readConfig() {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	var argListenAddr = fs.String("a", app.GetListenAddr(), "HTTP listen address")
-	var argRedirectBaseURL = fs.String("b", app.GetRedirectBaseURL(), "Base URL for redirects")
+	var argListenAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
+	var argRedirectBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
 
 	fs.Parse(os.Args[1:])
 
