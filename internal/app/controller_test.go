@@ -175,12 +175,12 @@ func compress(data []byte) ([]byte, error) {
 
 	_, err := w.Write(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed write data to compress temporary buffer: %v", err)
+		return nil, fmt.Errorf("failed write data : %w", err)
 	}
 
 	err = w.Close()
 	if err != nil {
-		return nil, fmt.Errorf("failed compress data: %v", err)
+		return nil, fmt.Errorf("failed compress data: %w", err)
 	}
 	return b.Bytes(), nil
 }

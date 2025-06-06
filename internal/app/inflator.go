@@ -2,6 +2,7 @@ package app
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -20,7 +21,7 @@ func inflatorMiddleware(inflator inflator) func(next http.Handler) http.Handler 
 			if inflator.isCompressed(r) {
 				body, err := inflator.wrap(r.Body)
 				if err != nil {
-					http.Error(w, "failed to decompress body: "+err.Error(), http.StatusBadRequest)
+					http.Error(w, fmt.Sprintf("failed to decompress body: %v", err), http.StatusBadRequest)
 					return
 				}
 				r.Body = body

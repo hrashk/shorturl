@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -23,7 +24,7 @@ func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 	raw, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -31,7 +32,7 @@ func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 	shortURL, err := c.Service.CreateShortURL(url)
 
 	if err != nil {
-		http.Error(w, "Failed to store URL", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -62,13 +63,13 @@ type ShortURLResponse struct {
 func (c ShortURLController) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	var req ShortURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	shortURL, err := c.Service.CreateShortURL(req.URL)
 	if err != nil {
-		http.Error(w, "Failed to store URL", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to store URL: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -78,7 +79,7 @@ func (c ShortURLController) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 
 	if err = json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed to write response: %v", err), http.StatusInternalServerError)
 		return
 	}
 }
