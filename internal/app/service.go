@@ -25,7 +25,7 @@ func (s shortURLService) CreateShortURL(url string) (shortURL string, err error)
 	if err := s.storage.Store(key, url); err != nil {
 		return "", fmt.Errorf("failed to store key %s: [%w]", key, err)
 	}
-	shortURL = config.redirectBaseURL + "/" + key
+	shortURL = config.baseURL + "/" + key
 	return shortURL, nil
 }
 

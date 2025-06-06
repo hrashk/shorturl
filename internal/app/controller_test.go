@@ -23,7 +23,7 @@ func TestControllerSuite(t *testing.T) {
 }
 
 func (suite *ControllerSuite) SetupTest() {
-	config.redirectBaseURL = "http://localhost:8888"
+	config.baseURL = "http://localhost:8888"
 
 	h := newHandlerWithLogger(suite)
 
@@ -81,7 +81,7 @@ func (suite *ControllerSuite) TestShortenApi() {
 	suite.Require().NoError(err, "Failed to read response body")
 
 	body := string(bytes)
-	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+	suite.Contains(body, config.baseURL, "Expected body to start with http://localhost:8080/")
 }
 
 func (suite *ControllerSuite) invokeShortener(url string) string {
@@ -99,7 +99,7 @@ func (suite *ControllerSuite) invokeShortener(url string) string {
 
 	body := string(bytes)
 
-	suite.Regexp("^"+config.redirectBaseURL, body, "Expected body to start with http://localhost:8080/")
+	suite.Regexp("^"+config.baseURL, body, "Expected body to start with http://localhost:8080/")
 
 	idx := strings.LastIndex(body, "/")
 	key := body[idx+1:]
@@ -143,7 +143,7 @@ func (suite *ControllerSuite) TestReceivingGzip() {
 	suite.Require().NoError(err, "Failed to read response body")
 
 	body := string(bytes)
-	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+	suite.Contains(body, config.baseURL, "Expected body to start with http://localhost:8080/")
 }
 
 func (suite *ControllerSuite) TestSendingGzip() {
@@ -166,7 +166,7 @@ func (suite *ControllerSuite) TestSendingGzip() {
 	suite.Require().NoError(err, "Failed to read response body")
 
 	body := string(bytes)
-	suite.Contains(body, config.redirectBaseURL, "Expected body to start with http://localhost:8080/")
+	suite.Contains(body, config.baseURL, "Expected body to start with http://localhost:8080/")
 }
 
 func compress(data []byte) ([]byte, error) {

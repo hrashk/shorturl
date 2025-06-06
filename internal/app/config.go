@@ -12,15 +12,15 @@ const (
 )
 
 var config = struct {
-	listenAddr      string
-	redirectBaseURL string
+	serverAddress string
+	baseURL       string
 }{
-	listenAddr:      DefaultServerAddress,
-	redirectBaseURL: DefaultBaseURL,
+	serverAddress: DefaultServerAddress,
+	baseURL:       DefaultBaseURL,
 }
 
 func GetListenAddr() string {
-	return config.listenAddr
+	return config.serverAddress
 }
 
 func SetListenAddr(addr string) {
@@ -28,11 +28,11 @@ func SetListenAddr(addr string) {
 	if err != nil || port == "" {
 		panic(fmt.Sprintf("Invalid server address %s", addr))
 	}
-	config.listenAddr = addr
+	config.serverAddress = addr
 }
 
 func GetRedirectBaseURL() string {
-	return config.redirectBaseURL
+	return config.baseURL
 }
 
 func SetRedirectBaseURL(baseURL string) {
@@ -40,5 +40,5 @@ func SetRedirectBaseURL(baseURL string) {
 	if err != nil || u.Scheme == "" || u.Host == "" {
 		panic(fmt.Sprintf("Invalid base URL %s.", baseURL))
 	}
-	config.redirectBaseURL = baseURL
+	config.baseURL = baseURL
 }
