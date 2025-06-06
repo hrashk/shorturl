@@ -25,7 +25,7 @@ func TestControllerSuite(t *testing.T) {
 func (suite *ControllerSuite) SetupTest() {
 	config.redirectBaseURL = "http://localhost:8888"
 
-	h := NewHandlerWithLogger(suite)
+	h := newHandlerWithLogger(suite)
 
 	suite.srv = httptest.NewServer(h)
 	suite.srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {

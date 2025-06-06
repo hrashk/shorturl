@@ -4,7 +4,7 @@ type Base62Generator struct {
 	counter chan uint64
 }
 
-func NewBase62Generator() Base62Generator {
+func newBase62Generator() Base62Generator {
 	c := make(chan uint64)
 
 	go count(c)

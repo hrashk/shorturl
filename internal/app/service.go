@@ -2,25 +2,25 @@ package app
 
 import "fmt"
 
-type ShortKeyGenerator interface {
+type shortKeyGenerator interface {
 	Generate(url string) (key string)
 }
 
-type Storage interface {
+type storage interface {
 	Store(key string, url string) error
 	LookUp(key string) (url string, err error)
 }
 
-type ShortURLService struct {
-	keyGenerator ShortKeyGenerator
-	storage      Storage
+type shortURLService struct {
+	keyGenerator shortKeyGenerator
+	storage      storage
 }
 
-func NewShortURLService(keyGenerator ShortKeyGenerator, storage Storage) ShortURLService {
-	return ShortURLService{keyGenerator, storage}
+func newShortURLService(keyGenerator shortKeyGenerator, storage storage) shortURLService {
+	return shortURLService{keyGenerator, storage}
 }
 
-func (s ShortURLService) CreateShortURL(url string) (shortURL string, err error) {
+func (s shortURLService) CreateShortURL(url string) (shortURL string, err error) {
 	key := s.keyGenerator.Generate(url)
 	if err := s.storage.Store(key, url); err != nil {
 		return "", fmt.Errorf("failed to store key %s: [%w]", key, err)
@@ -29,7 +29,7 @@ func (s ShortURLService) CreateShortURL(url string) (shortURL string, err error)
 	return shortURL, nil
 }
 
-func (s ShortURLService) LookUp(key string) (url string, err error) {
+func (s shortURLService) LookUp(key string) (url string, err error) {
 	url, err = s.storage.LookUp(key)
 	if err != nil {
 		return "", fmt.Errorf("key %v not found: [%w]", key, err)

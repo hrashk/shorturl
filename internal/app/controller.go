@@ -12,15 +12,15 @@ type Service interface {
 	LookUp(key string) (url string, err error)
 }
 
-type ShortURLController struct {
+type shortURLController struct {
 	Service Service
 }
 
-func NewShortURLController(service Service) ShortURLController {
-	return ShortURLController{service}
+func newShortURLController(service Service) shortURLController {
+	return shortURLController{service}
 }
 
-func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
+func (c shortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -40,7 +40,7 @@ func (c ShortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 	io.WriteString(w, shortURL)
 }
 
-func (c ShortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
+func (c shortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
 	url, err := c.Service.LookUp(key)
@@ -60,7 +60,7 @@ type ShortURLResponse struct {
 	Result string `json:"result"`
 }
 
-func (c ShortURLController) ShortenAPI(w http.ResponseWriter, r *http.Request) {
+func (c shortURLController) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	var req ShortURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)

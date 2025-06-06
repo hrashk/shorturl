@@ -12,21 +12,21 @@ type logger interface {
 	Info(msg string, fields ...any)
 }
 
-type ZeroLogger struct {
+type zeroLogger struct {
 	logger zerolog.Logger
 }
 
-func NewZeroLogger() ZeroLogger {
+func newZeroLogger() zeroLogger {
 	zl := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	return ZeroLogger{logger: zl}
+	return zeroLogger{logger: zl}
 }
 
-func (zl ZeroLogger) Info(msg string, fields ...any) {
+func (zl zeroLogger) Info(msg string, fields ...any) {
 	zl.logger.Info().Fields(fields).Msg(msg)
 }
 
-func loggingMiddleware(logger logger) func(h http.Handler) http.Handler {
+func loggingMiddleware(l logger) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		logFn := func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -38,7 +38,7 @@ func loggingMiddleware(logger logger) func(h http.Handler) http.Handler {
 
 			duration := time.Since(start)
 
-			logger.Info("",
+			l.Info("",
 				"uri", r.RequestURI,
 				"method", r.Method,
 				"status", rw.status,

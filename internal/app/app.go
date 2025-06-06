@@ -6,18 +6,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewInMemoryController() ShortURLController {
-	s := NewShortURLService(NewBase62Generator(), NewInMemStorage())
+func newInMemoryController() shortURLController {
+	s := newShortURLService(newBase62Generator(), newInMemStorage())
 
-	return NewShortURLController(s)
+	return newShortURLController(s)
 }
 
 func NewHandler() http.Handler {
-	return NewHandlerWithLogger(NewZeroLogger())
+	return newHandlerWithLogger(newZeroLogger())
 }
 
-func NewHandlerWithLogger(logger logger) http.Handler {
-	c := NewInMemoryController()
+func newHandlerWithLogger(logger logger) http.Handler {
+	c := newInMemoryController()
 
 	r := chi.NewRouter()
 	r.Use(loggingMiddleware(logger))

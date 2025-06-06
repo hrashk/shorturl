@@ -5,21 +5,21 @@ import (
 	"sync"
 )
 
-type InMemStorage struct {
+type inMemStorage struct {
 	data *sync.Map
 }
 
-func NewInMemStorage() InMemStorage {
-	return InMemStorage{
+func newInMemStorage() inMemStorage {
+	return inMemStorage{
 		data: &sync.Map{},
 	}
 }
-func (s InMemStorage) Store(key string, url string) error {
+func (s inMemStorage) Store(key string, url string) error {
 	s.data.Store(key, url)
 
 	return nil
 }
-func (s InMemStorage) LookUp(key string) (url string, err error) {
+func (s inMemStorage) LookUp(key string) (url string, err error) {
 	v, ok := s.data.Load(key)
 	if !ok {
 		return "", errors.New("key not found: " + key)
