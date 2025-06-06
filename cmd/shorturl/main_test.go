@@ -10,9 +10,7 @@ import (
 
 type MainSuite struct {
 	suite.Suite
-	origArgs     []string
-	origListen   string
-	origRedirect string
+	origArgs []string
 }
 
 func TestMainSuite(t *testing.T) {
@@ -21,15 +19,13 @@ func TestMainSuite(t *testing.T) {
 
 func (suite *MainSuite) SetupTest() {
 	suite.origArgs = os.Args
-	suite.origListen = app.GetListenAddr()
-	suite.origRedirect = app.GetRedirectBaseURL()
 }
 
 func (suite *MainSuite) TearDownTest() {
 	os.Args = suite.origArgs
 
-	app.SetListenAddr(suite.origListen)
-	app.SetRedirectBaseURL(suite.origRedirect)
+	app.SetListenAddr(app.DefaultServerAddress)
+	app.SetRedirectBaseURL(app.DefaultBaseURL)
 
 	os.Unsetenv("SERVER_ADDRESS")
 	os.Unsetenv("BASE_URL")
@@ -40,9 +36,9 @@ func (suite *MainSuite) Test_readConfig() {
 	const redirect = "http://example.com:1024"
 	os.Args = []string{"", "-a", listen, "-b", redirect}
 
-	readConfig()
+	server := buildServer()
 
-	suite.Equal(listen, app.GetListenAddr())
+	suite.Equal(listen, server.Addr)
 	suite.Equal(redirect, app.GetRedirectBaseURL())
 }
 
@@ -50,9 +46,9 @@ func (suite *MainSuite) Test_readConfigWithDefaultListenAddress() {
 	const redirect = "http://example.com:1024"
 	os.Args = []string{"", "-b", redirect}
 
-	readConfig()
+	server := buildServer()
 
-	suite.Equal(suite.origListen, app.GetListenAddr())
+	suite.Equal(app.DefaultServerAddress, server.Addr)
 	suite.Equal(redirect, app.GetRedirectBaseURL())
 }
 
@@ -60,19 +56,19 @@ func (suite *MainSuite) Test_readConfigWithDefaultRedirectAddress() {
 	const listen = "localhost:9999"
 	os.Args = []string{"", "-a", listen}
 
-	readConfig()
+	server := buildServer()
 
-	suite.Equal(listen, app.GetListenAddr())
-	suite.Equal(suite.origRedirect, app.GetRedirectBaseURL())
+	suite.Equal(listen, server.Addr)
+	suite.Equal(app.DefaultBaseURL, app.GetRedirectBaseURL())
 }
 
 func (suite *MainSuite) Test_readConfig_Defaults() {
 	os.Args = []string{""}
 
-	readConfig()
+	server := buildServer()
 
-	suite.Equal(suite.origListen, app.GetListenAddr())
-	suite.Equal(suite.origRedirect, app.GetRedirectBaseURL())
+	suite.Equal(app.DefaultServerAddress, server.Addr)
+	suite.Equal(app.DefaultBaseURL, app.GetRedirectBaseURL())
 }
 
 func (suite *MainSuite) Test_readConfigWithEnvServerAddress() {
@@ -83,9 +79,9 @@ func (suite *MainSuite) Test_readConfigWithEnvServerAddress() {
 	const argRedirect = "http://example.com:1024"
 	os.Args = []string{"", "-a", argListen, "-b", argRedirect}
 
-	readConfig()
+	server := buildServer()
 
-	suite.Equal(envListen, app.GetListenAddr())
+	suite.Equal(envListen, server.Addr)
 	suite.Equal(argRedirect, app.GetRedirectBaseURL())
 }
 
@@ -97,8 +93,8 @@ func (suite *MainSuite) Test_readConfigWithEnvRedirectURL() {
 	const argRedirect = "http://example.com:1024"
 	os.Args = []string{"", "-a", argListen, "-b", argRedirect}
 
-	readConfig()
+	server := buildServer()
 
-	suite.Equal(argListen, app.GetListenAddr())
+	suite.Equal(argListen, server.Addr)
 	suite.Equal(envRedirect, app.GetRedirectBaseURL())
 }

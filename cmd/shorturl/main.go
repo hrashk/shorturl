@@ -9,13 +9,20 @@ import (
 )
 
 func main() {
-	readConfig()
+	server := buildServer()
 
-	err := http.ListenAndServe(app.GetListenAddr(), app.NewHandler())
+	err := server.ListenAndServe()
 
 	if err != nil {
 		panic(err)
 	}
+}
+
+func buildServer() *http.Server {
+	readConfig()
+
+	server := &http.Server{Addr: app.GetListenAddr(), Handler: app.NewHandler()}
+	return server
 }
 
 func readConfig() {
