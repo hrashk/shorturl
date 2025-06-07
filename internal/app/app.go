@@ -6,13 +6,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func NewServer() (*http.Server, error) {
+	return &http.Server{Addr: GetListenAddr(), Handler: newHandler()}, nil
+}
+
 func newInMemoryController() shortURLController {
 	s := newShortURLService(newBase62Generator(), newInMemStorage())
 
 	return newShortURLController(s)
 }
 
-func NewHandler() http.Handler {
+func newHandler() http.Handler {
 	return newHandlerWithLogger(newZeroLogger())
 }
 

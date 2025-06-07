@@ -42,7 +42,7 @@ func buildServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to read configuration: %w", err)
 	}
 
-	return &http.Server{Addr: app.GetListenAddr(), Handler: app.NewHandler()}, nil
+	return app.NewServer()
 }
 
 func readConfig() error {
