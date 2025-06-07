@@ -15,6 +15,7 @@ type config struct {
 	serverAddress string
 	baseURL       string
 	log           logger
+	storage       storage
 }
 
 func newConfig(modifiers ...CfgModifier) (*config, error) {
@@ -31,6 +32,9 @@ func newConfig(modifiers ...CfgModifier) (*config, error) {
 
 	if cfg.log == nil {
 		cfg.log = newZeroLogger()
+	}
+	if cfg.storage == nil {
+		cfg.storage = newInMemStorage()
 	}
 
 	return cfg, nil
@@ -63,6 +67,13 @@ func BaseURL(baseURL string) CfgModifier {
 func Logger(log logger) CfgModifier {
 	return func(cfg *config) error {
 		cfg.log = log
+		return nil
+	}
+}
+
+func Storage(s storage) CfgModifier {
+	return func(cfg *config) error {
+		cfg.storage = s
 		return nil
 	}
 }

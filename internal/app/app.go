@@ -16,7 +16,7 @@ func NewServer(modifiers ...CfgModifier) (*http.Server, error) {
 }
 
 func newInMemoryController(cfg *config) shortURLController {
-	s := newShortURLService(newBase62Generator(), newInMemStorage(), cfg.baseURL)
+	s := newShortURLService(newBase62Generator(), cfg.storage, cfg.baseURL)
 
 	return newShortURLController(s)
 }
