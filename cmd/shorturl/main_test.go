@@ -51,7 +51,7 @@ func (ms *MainSuite) Test_readConfig() {
 	ms.startServer()
 
 	ms.Equal(listen, ms.server.Addr)
-	ms.invokeShortener(sampleURL, redirect)
+	ms.shorten(sampleURL, redirect)
 }
 
 func (ms *MainSuite) Test_readConfigWithDefaultListenAddress() {
@@ -61,7 +61,7 @@ func (ms *MainSuite) Test_readConfigWithDefaultListenAddress() {
 	ms.startServer()
 
 	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
-	ms.invokeShortener(sampleURL, baseURL)
+	ms.shorten(sampleURL, baseURL)
 }
 
 func (ms *MainSuite) Test_readConfigWithDefaultRedirectAddress() {
@@ -71,7 +71,7 @@ func (ms *MainSuite) Test_readConfigWithDefaultRedirectAddress() {
 	ms.startServer()
 
 	ms.Equal(listen, ms.server.Addr)
-	ms.invokeShortener(sampleURL, app.DefaultBaseURL)
+	ms.shorten(sampleURL, app.DefaultBaseURL)
 }
 
 func (ms *MainSuite) Test_readConfig_Defaults() {
@@ -80,7 +80,7 @@ func (ms *MainSuite) Test_readConfig_Defaults() {
 	ms.startServer()
 
 	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
-	ms.invokeShortener(sampleURL, app.DefaultBaseURL)
+	ms.shorten(sampleURL, app.DefaultBaseURL)
 }
 
 func (ms *MainSuite) Test_readConfigWithEnvServerAddress() {
@@ -94,7 +94,7 @@ func (ms *MainSuite) Test_readConfigWithEnvServerAddress() {
 	ms.startServer()
 
 	ms.Equal(envListen, ms.server.Addr)
-	ms.invokeShortener(sampleURL, argRedirect)
+	ms.shorten(sampleURL, argRedirect)
 }
 
 func (ms *MainSuite) Test_readConfigWithEnvRedirectURL() {
@@ -108,21 +108,16 @@ func (ms *MainSuite) Test_readConfigWithEnvRedirectURL() {
 	ms.startServer()
 
 	ms.Equal(argListen, ms.server.Addr)
-	ms.invokeShortener(sampleURL, envRedirect)
+	ms.shorten(sampleURL, envRedirect)
 }
 
-func (ms *MainSuite) invokeShortener(url, baseURL string) string {
-	resp, err := http.Post(ms.serverAddress(), "text/plain", strings.NewReader(url))
-	ms.Require().NoError(err, "Failed to make request")
-	defer resp.Body.Close()
+func (ms *MainSuite) shorten(url, baseURL string) string {
+	body := ms.callShortener(url)
 
-	ms.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
+	return ms.extractKey(baseURL, body)
+}
 
-	bytes, err := io.ReadAll(resp.Body)
-	ms.Require().NoError(err, "Failed to read response body")
-
-	body := string(bytes)
-
+func (ms *MainSuite) extractKey(baseURL string, body string) string {
 	ms.Regexp("^"+baseURL, body, "Redirect URL")
 
 	idx := strings.LastIndex(body, "/")
@@ -130,6 +125,30 @@ func (ms *MainSuite) invokeShortener(url, baseURL string) string {
 	ms.GreaterOrEqual(len(key), 6, "Expected key length to be at least 6")
 
 	return key
+}
+
+func (ms *MainSuite) callShortener(url string) string {
+	resp := ms.post("text/plain", url)
+
+	ms.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
+
+	return ms.readBody(resp)
+}
+
+func (ms *MainSuite) readBody(resp *http.Response) string {
+	defer resp.Body.Close()
+
+	bytes, err := io.ReadAll(resp.Body)
+	ms.Require().NoError(err, "Failed to read response body")
+
+	return string(bytes)
+}
+
+func (ms *MainSuite) post(contentType string, body string) *http.Response {
+	resp, err := http.Post(ms.serverAddress(), contentType, strings.NewReader(body))
+	ms.Require().NoError(err, "Failed to POST")
+
+	return resp
 }
 
 func (ms *MainSuite) serverAddress() string {
@@ -147,23 +166,25 @@ func (ms *MainSuite) startServer() {
 
 	go ms.server.ListenAndServe()
 
-	ms.waitForPort(ms.server.Addr)
+	ms.waitForPort()
 }
 
-func (ms *MainSuite) waitForPort(address string) {
-	start := time.Now()
-	timeout := time.Second
+func (ms *MainSuite) waitForPort() {
+	const timeout = time.Second
+	const pollInterval = 50 * time.Millisecond
+	addr := ms.server.Addr
 
+	start := time.Now()
 	for {
-		conn, err := net.DialTimeout("tcp", address, timeout)
+		conn, err := net.DialTimeout("tcp", addr, timeout)
 		if err == nil {
 			conn.Close()
 			return // Port is open
 		}
 		if time.Since(start) > timeout {
-			ms.Require().NoError(err, "timed out connecting to "+address)
+			ms.Require().Fail("timed out connecting to " + addr)
 			return
 		}
-		time.Sleep(50 * time.Millisecond) // Wait before retrying
+		time.Sleep(pollInterval)
 	}
 }
