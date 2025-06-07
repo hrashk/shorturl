@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -9,35 +10,44 @@ import (
 )
 
 func main() {
-	server := buildServer()
+	server, err := buildServer()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build server: %v\n", err)
+		os.Exit(2)
+	}
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 
 	if err != nil {
 		panic(err)
 	}
 }
 
-func buildServer() *http.Server {
-	readConfig()
+func buildServer() (*http.Server, error) {
+	if err := readConfig(); err != nil {
+		return nil, err
+	}
 
-	server := &http.Server{Addr: app.GetListenAddr(), Handler: app.NewHandler()}
-	return server
+	return &http.Server{Addr: app.GetListenAddr(), Handler: app.NewHandler()}, nil
 }
 
-func readConfig() {
-	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+func readConfig() error {
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
 	var argListenAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
 	var argRedirectBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
 
-	fs.Parse(os.Args[1:])
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		return fmt.Errorf("failed to parse command arguments: %w", err)
+	}
 
 	listenAddr := argOrEnv(argListenAddr, "SERVER_ADDRESS")
 	redirectBaseURL := argOrEnv(argRedirectBaseURL, "BASE_URL")
 
 	app.SetListenAddr(listenAddr)
 	app.SetRedirectBaseURL(redirectBaseURL)
+
+	return nil
 }
 
 func argOrEnv(argValue *string, envName string) string {

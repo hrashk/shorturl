@@ -45,6 +45,9 @@ func (ms *MainSuite) TearDownSubTest() {
 
 func (ms *MainSuite) setUp() {
 	ms.origArgs = os.Args
+
+	// avoid errors due to unknown flags from go test
+	os.Args = []string{os.Args[0]}
 }
 
 func (ms *MainSuite) tearDown() {
@@ -78,10 +81,7 @@ func (ms *MainSuite) TestServerAddress() {
 				os.Setenv("SERVER_ADDRESS", t.env)
 			}
 			if t.arg != skip {
-				os.Args = []string{"", "-a", t.arg}
-			} else {
-				// avoid errors due to unknown flags from go test
-				os.Args = []string{""}
+				os.Args = append(os.Args, "-a", t.arg)
 			}
 			ms.startServer()
 
@@ -191,8 +191,10 @@ func (ms *MainSuite) serverAddress() string {
 }
 
 func (ms *MainSuite) startServer() {
-	ms.server = buildServer()
+	srv, err := buildServer()
+	ms.Require().NoError(err, "Failed building server")
 
+	ms.server = srv
 	go ms.server.ListenAndServe()
 
 	ms.waitForPort()
