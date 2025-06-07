@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,6 +15,8 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build server: %v\n", err)
 		os.Exit(2)
+	} else if server == nil { // in case help was requested
+		return
 	}
 
 	err = server.ListenAndServe()
@@ -24,7 +27,9 @@ func main() {
 }
 
 func buildServer() (*http.Server, error) {
-	if err := readConfig(); err != nil {
+	if err := readConfig(); errors.Is(err, flag.ErrHelp) {
+		return nil, nil // do not start server when asked for help
+	} else if err != nil {
 		return nil, err
 	}
 

@@ -102,6 +102,13 @@ func (ms *MainSuite) TestCommandArgs() {
 	ms.shorten(sampleURL, redirect)
 }
 
+func (ms *MainSuite) TestHelp() {
+	os.Args = append(os.Args, "-h")
+	srv, err := buildServer()
+	ms.NoError(err)
+	ms.Nil(srv)
+}
+
 func (ms *MainSuite) Test_readConfigWithDefaultListenAddress() {
 	const baseURL = "http://example.com:1024"
 	os.Args = []string{"", "-b", baseURL}
