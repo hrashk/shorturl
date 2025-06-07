@@ -25,7 +25,7 @@ func newHandler(cfg *config) http.Handler {
 	c := newInMemoryController(cfg)
 
 	r := chi.NewRouter()
-	r.Use(loggingMiddleware(newZeroLogger()))
+	r.Use(loggingMiddleware(cfg.log))
 	r.Use(newGzipDeflator())
 	r.Use(newGzipInflator())
 

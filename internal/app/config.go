@@ -14,6 +14,7 @@ const (
 type config struct {
 	serverAddress string
 	baseURL       string
+	log           logger
 }
 
 func newConfig(modifiers ...CfgModifier) (*config, error) {
@@ -26,6 +27,10 @@ func newConfig(modifiers ...CfgModifier) (*config, error) {
 		if err := m(cfg); err != nil {
 			return nil, err
 		}
+	}
+
+	if cfg.log == nil {
+		cfg.log = newZeroLogger()
 	}
 
 	return cfg, nil
@@ -51,6 +56,13 @@ func BaseURL(baseURL string) CfgModifier {
 			return fmt.Errorf("invalid base URL %s", baseURL)
 		}
 		cfg.baseURL = baseURL
+		return nil
+	}
+}
+
+func Logger(log logger) CfgModifier {
+	return func(cfg *config) error {
+		cfg.log = log
 		return nil
 	}
 }

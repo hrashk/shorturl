@@ -23,7 +23,7 @@ func TestControllerSuite(t *testing.T) {
 }
 
 func (suite *ControllerSuite) SetupTest() {
-	cfg, err := newConfig() // todo add custom logger
+	cfg, err := newConfig(Logger(suite))
 	suite.Require().NoError(err)
 
 	h := newHandler(cfg)
