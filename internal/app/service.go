@@ -14,10 +14,11 @@ type storage interface {
 type shortURLService struct {
 	keyGenerator shortKeyGenerator
 	storage      storage
+	baseURL      string
 }
 
-func newShortURLService(keyGenerator shortKeyGenerator, storage storage) shortURLService {
-	return shortURLService{keyGenerator, storage}
+func newShortURLService(kg shortKeyGenerator, st storage, baseURL string) shortURLService {
+	return shortURLService{kg, st, baseURL}
 }
 
 func (s shortURLService) CreateShortURL(url string) (shortURL string, err error) {
@@ -25,7 +26,7 @@ func (s shortURLService) CreateShortURL(url string) (shortURL string, err error)
 	if err := s.storage.Store(key, url); err != nil {
 		return "", fmt.Errorf("failed to store key %s: [%w]", key, err)
 	}
-	shortURL = config.baseURL + "/" + key
+	shortURL = s.baseURL + "/" + key
 	return shortURL, nil
 }
 

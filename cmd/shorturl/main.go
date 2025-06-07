@@ -36,32 +36,31 @@ func startServer() (*http.Server, chan error) {
 }
 
 func buildServer() (*http.Server, error) {
-	if err := readConfig(); errors.Is(err, flag.ErrHelp) {
+	mods, err := readConfig()
+
+	if errors.Is(err, flag.ErrHelp) {
 		return nil, nil // do not start server when asked for help
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to read configuration: %w", err)
 	}
 
-	return app.NewServer()
+	return app.NewServer(mods...)
 }
 
-func readConfig() error {
+func readConfig() ([]app.CfgModifier, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
-	var argListenAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
-	var argRedirectBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
+	var argAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
+	var argBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
-		return fmt.Errorf("failed to parse command arguments: %w", err)
+		return nil, fmt.Errorf("failed to parse command arguments: %w", err)
 	}
 
-	listenAddr := argOrEnv(argListenAddr, "SERVER_ADDRESS")
-	redirectBaseURL := argOrEnv(argRedirectBaseURL, "BASE_URL")
+	addr := argOrEnv(argAddr, "SERVER_ADDRESS")
+	baseURL := argOrEnv(argBaseURL, "BASE_URL")
 
-	app.SetListenAddr(listenAddr)
-	app.SetRedirectBaseURL(redirectBaseURL)
-
-	return nil
+	return []app.CfgModifier{app.ServerAddress(addr), app.BaseURL(baseURL)}, nil
 }
 
 func argOrEnv(argValue *string, envName string) string {

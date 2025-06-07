@@ -53,9 +53,6 @@ func (ms *MainSuite) setUp() {
 func (ms *MainSuite) tearDown() {
 	os.Args = ms.origArgs
 
-	app.SetListenAddr(app.DefaultServerAddress)
-	app.SetRedirectBaseURL(app.DefaultBaseURL)
-
 	os.Unsetenv("SERVER_ADDRESS")
 	os.Unsetenv("BASE_URL")
 

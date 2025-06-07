@@ -11,34 +11,46 @@ const (
 	DefaultBaseURL       = "http://localhost:8080"
 )
 
-var config = struct {
+type config struct {
 	serverAddress string
 	baseURL       string
-}{
-	serverAddress: DefaultServerAddress,
-	baseURL:       DefaultBaseURL,
 }
 
-func GetListenAddr() string {
-	return config.serverAddress
-}
-
-func SetListenAddr(addr string) {
-	_, port, err := net.SplitHostPort(addr)
-	if err != nil || port == "" {
-		panic(fmt.Sprintf("Invalid server address %s", addr))
+func newConfig(modifiers ...CfgModifier) (*config, error) {
+	cfg := &config{
+		serverAddress: DefaultServerAddress,
+		baseURL:       DefaultBaseURL,
 	}
-	config.serverAddress = addr
-}
 
-func GetRedirectBaseURL() string {
-	return config.baseURL
-}
-
-func SetRedirectBaseURL(baseURL string) {
-	u, err := url.Parse(baseURL)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		panic(fmt.Sprintf("Invalid base URL %s.", baseURL))
+	for _, m := range modifiers {
+		if err := m(cfg); err != nil {
+			return nil, err
+		}
 	}
-	config.baseURL = baseURL
+
+	return cfg, nil
+}
+
+type CfgModifier func(*config) error
+
+func ServerAddress(addr string) CfgModifier {
+	return func(cfg *config) error {
+		_, port, err := net.SplitHostPort(addr)
+		if err != nil || port == "" {
+			return fmt.Errorf("invalid server address %s", addr)
+		}
+		cfg.serverAddress = addr
+		return nil
+	}
+}
+
+func BaseURL(baseURL string) CfgModifier {
+	return func(cfg *config) error {
+		u, err := url.Parse(baseURL)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			return fmt.Errorf("invalid base URL %s", baseURL)
+		}
+		cfg.baseURL = baseURL
+		return nil
+	}
 }

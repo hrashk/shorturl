@@ -6,25 +6,26 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewServer() (*http.Server, error) {
-	return &http.Server{Addr: GetListenAddr(), Handler: newHandler()}, nil
+func NewServer(modifiers ...CfgModifier) (*http.Server, error) {
+	cfg, err := newConfig(modifiers...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &http.Server{Addr: cfg.serverAddress, Handler: newHandler(cfg)}, nil
 }
 
-func newInMemoryController() shortURLController {
-	s := newShortURLService(newBase62Generator(), newInMemStorage())
+func newInMemoryController(cfg *config) shortURLController {
+	s := newShortURLService(newBase62Generator(), newInMemStorage(), cfg.baseURL)
 
 	return newShortURLController(s)
 }
 
-func newHandler() http.Handler {
-	return newHandlerWithLogger(newZeroLogger())
-}
-
-func newHandlerWithLogger(logger logger) http.Handler {
-	c := newInMemoryController()
+func newHandler(cfg *config) http.Handler {
+	c := newInMemoryController(cfg)
 
 	r := chi.NewRouter()
-	r.Use(loggingMiddleware(logger))
+	r.Use(loggingMiddleware(newZeroLogger()))
 	r.Use(newGzipDeflator())
 	r.Use(newGzipInflator())
 
