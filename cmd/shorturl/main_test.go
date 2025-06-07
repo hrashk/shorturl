@@ -91,15 +91,54 @@ func (ms *MainSuite) TestServerAddress() {
 	}
 }
 
+func (ms *MainSuite) TestBaseURL() {
+	tests := []struct {
+		env, arg, expected string
+	}{
+		{skip, skip, app.DefaultBaseURL},
+		{skip, "http://example.com:1024", "http://example.com:1024"},
+		{"http://example.com:1024", skip, "http://example.com:1024"},
+		{"http://example.com:1024", "http://example.com:4201", "http://example.com:1024"},
+	}
+
+	for i, t := range tests {
+		name := fmt.Sprintf("base URL %d", i+1)
+		ms.Run(name, func() {
+			if t.env != skip {
+				os.Setenv("BASE_URL", t.env)
+			}
+			if t.arg != skip {
+				os.Args = append(os.Args, "-b", t.arg)
+			}
+			ms.startServer()
+
+			ms.Equal(app.DefaultServerAddress, ms.server.Addr)
+			ms.shorten(sampleURL, t.expected)
+		})
+	}
+}
+
 func (ms *MainSuite) TestCommandArgs() {
-	const listen = "localhost:8088"
-	const redirect = "http://example.com:1024"
-	os.Args = []string{"", "-a", listen, "-b", redirect}
+	const addr = "localhost:8088"
+	const baseURL = "http://example.com:1024"
+	os.Args = []string{"", "-a", addr, "-b", baseURL}
 
 	ms.startServer()
 
-	ms.Equal(listen, ms.server.Addr)
-	ms.shorten(sampleURL, redirect)
+	ms.Equal(addr, ms.server.Addr)
+	ms.shorten(sampleURL, baseURL)
+}
+
+func (ms *MainSuite) TestEnvVars() {
+	const addr = "localhost:8088"
+	const baseURL = "http://example.com:1024"
+	os.Setenv("SERVER_ADDRESS", addr)
+	os.Setenv("BASE_URL", baseURL)
+
+	ms.startServer()
+
+	ms.Equal(addr, ms.server.Addr)
+	ms.shorten(sampleURL, baseURL)
 }
 
 func (ms *MainSuite) TestHelp() {
@@ -107,44 +146,6 @@ func (ms *MainSuite) TestHelp() {
 	srv, err := buildServer()
 	ms.NoError(err)
 	ms.Nil(srv)
-}
-
-func (ms *MainSuite) Test_readConfigWithDefaultListenAddress() {
-	const baseURL = "http://example.com:1024"
-	os.Args = []string{"", "-b", baseURL}
-
-	ms.startServer()
-
-	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
-	ms.shorten(sampleURL, baseURL)
-}
-
-func (ms *MainSuite) Test_readConfigWithEnvServerAddress() {
-	const envListen = "127.0.0.1:8088"
-	os.Setenv("SERVER_ADDRESS", envListen)
-
-	const argListen = "localhost:8099"
-	const argRedirect = "http://example.com:1024"
-	os.Args = []string{"", "-a", argListen, "-b", argRedirect}
-
-	ms.startServer()
-
-	ms.Equal(envListen, ms.server.Addr)
-	ms.shorten(sampleURL, argRedirect)
-}
-
-func (ms *MainSuite) Test_readConfigWithEnvRedirectURL() {
-	const envRedirect = "http://random.com:4201"
-	os.Setenv("BASE_URL", envRedirect)
-
-	const argListen = "localhost:8099"
-	const argRedirect = "http://example.com:1024"
-	os.Args = []string{"", "-a", argListen, "-b", argRedirect}
-
-	ms.startServer()
-
-	ms.Equal(argListen, ms.server.Addr)
-	ms.shorten(sampleURL, envRedirect)
 }
 
 func (ms *MainSuite) shorten(url, baseURL string) string {
