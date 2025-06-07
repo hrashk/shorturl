@@ -52,6 +52,7 @@ func readConfig() ([]app.CfgModifier, error) {
 
 	var argAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
 	var argBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
+	var argStoragePath = fs.String("f", app.DefaultStoragePath, "File storage path")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, fmt.Errorf("failed to parse command arguments: %w", err)
@@ -59,8 +60,13 @@ func readConfig() ([]app.CfgModifier, error) {
 
 	addr := argOrEnv(argAddr, "SERVER_ADDRESS")
 	baseURL := argOrEnv(argBaseURL, "BASE_URL")
+	storagePath := argOrEnv(argStoragePath, "FILE_STORAGE_PATH")
 
-	return []app.CfgModifier{app.ServerAddress(addr), app.BaseURL(baseURL)}, nil
+	return []app.CfgModifier{
+		app.ServerAddress(addr),
+		app.BaseURL(baseURL),
+		app.StoragePath(storagePath),
+	}, nil
 }
 
 func argOrEnv(argValue *string, envName string) string {

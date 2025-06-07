@@ -118,12 +118,19 @@ func (ms *MainSuite) TestBaseURL() {
 func (ms *MainSuite) TestCommandArgs() {
 	const addr = "localhost:8088"
 	const baseURL = "http://example.com:1024"
-	os.Args = []string{"", "-a", addr, "-b", baseURL}
+	const fpath = "/tmp/urls.json"
+	os.Args = []string{"", "-a", addr, "-b", baseURL, "-f", fpath}
 
 	ms.startServer()
 
 	ms.Equal(addr, ms.server.Addr)
-	ms.shorten(sampleURL, baseURL)
+	key := ms.shorten(sampleURL, baseURL)
+
+	ms.server.Close()
+	ms.startServer()
+
+	url := ms.lookUp(key)
+	ms.Equal(sampleURL, url)
 }
 
 func (ms *MainSuite) TestEnvVars() {
@@ -184,6 +191,19 @@ func (ms *MainSuite) post(contentType string, body string) *http.Response {
 	ms.Require().NoError(err, "Failed to POST")
 
 	return resp
+}
+
+func (ms *MainSuite) lookUp(key string) string {
+	resp, err := http.Get(ms.serverAddress() + "/" + key)
+	ms.Require().NoError(err, "Failed to make request")
+	defer resp.Body.Close()
+
+	ms.Equal(http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
+
+	loc := resp.Header.Get("Location")
+	ms.NotEmpty(loc, "Expected Location header to be set")
+
+	return loc
 }
 
 func (ms *MainSuite) serverAddress() string {

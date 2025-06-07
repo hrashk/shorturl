@@ -9,6 +9,7 @@ import (
 const (
 	DefaultServerAddress = ":8080"
 	DefaultBaseURL       = "http://localhost:8080"
+	DefaultStoragePath   = "/tmp/short-url-db.json"
 )
 
 type config struct {
@@ -71,9 +72,9 @@ func Logger(log logger) CfgModifier {
 	}
 }
 
-func Storage(s storage) CfgModifier {
+func StoragePath(sp string) CfgModifier {
 	return func(cfg *config) error {
-		cfg.storage = s
+		cfg.storage = nil
 		return nil
 	}
 }
