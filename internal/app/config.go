@@ -72,9 +72,14 @@ func Logger(log logger) CfgModifier {
 	}
 }
 
-func StoragePath(sp string) CfgModifier {
+func StoragePath(path string) CfgModifier {
 	return func(cfg *config) error {
-		cfg.storage = nil
-		return nil
+		s, err := newFileStorage(path)
+
+		if err == nil {
+			cfg.storage = s
+		}
+
+		return err
 	}
 }
