@@ -143,8 +143,9 @@ func (ms *MainSuite) TestEnvVars() {
 
 func (ms *MainSuite) TestHelp() {
 	os.Args = append(os.Args, "-h")
-	srv, err := buildServer()
-	ms.NoError(err)
+
+	srv, _ := startServer()
+
 	ms.Nil(srv)
 }
 
@@ -199,11 +200,8 @@ func (ms *MainSuite) serverAddress() string {
 }
 
 func (ms *MainSuite) startServer() {
-	srv, err := buildServer()
-	ms.Require().NoError(err, "Failed building server")
-
-	ms.server = srv
-	go ms.server.ListenAndServe()
+	ms.server, _ = startServer()
+	ms.Require().NotNil(ms.server, "failed to start server")
 
 	ms.waitForPort()
 }

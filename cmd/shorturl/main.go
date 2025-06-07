@@ -11,26 +11,35 @@ import (
 )
 
 func main() {
-	server, err := buildServer()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build server: %v\n", err)
-		os.Exit(2)
-	} else if server == nil { // in case help was requested
-		return
-	}
+	_, ch := startServer()
 
-	err = server.ListenAndServe()
-
-	if err != nil {
+	if err := <-ch; err != nil {
 		panic(err)
 	}
+}
+
+func startServer() (*http.Server, chan error) {
+	// do not block in case of error
+	ch := make(chan error, 1)
+
+	server, err := buildServer()
+	if err != nil || server == nil {
+		ch <- err
+		return nil, ch
+	}
+
+	go func() {
+		ch <- server.ListenAndServe()
+	}()
+
+	return server, ch
 }
 
 func buildServer() (*http.Server, error) {
 	if err := readConfig(); errors.Is(err, flag.ErrHelp) {
 		return nil, nil // do not start server when asked for help
 	} else if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read configuration: %w", err)
 	}
 
 	return &http.Server{Addr: app.GetListenAddr(), Handler: app.NewHandler()}, nil
