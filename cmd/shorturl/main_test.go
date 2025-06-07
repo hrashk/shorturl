@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 )
 
 const sampleURL = "https://pkg.go.dev/cmp"
+const skip = "#"
 
 type MainSuite struct {
 	suite.Suite
@@ -26,10 +28,26 @@ func TestMainSuite(t *testing.T) {
 }
 
 func (ms *MainSuite) SetupTest() {
-	ms.origArgs = os.Args
+	ms.setUp()
+}
+
+func (ms *MainSuite) SetupSubTest() {
+	ms.setUp()
 }
 
 func (ms *MainSuite) TearDownTest() {
+	ms.tearDown()
+}
+
+func (ms *MainSuite) TearDownSubTest() {
+	ms.tearDown()
+}
+
+func (ms *MainSuite) setUp() {
+	ms.origArgs = os.Args
+}
+
+func (ms *MainSuite) tearDown() {
 	os.Args = ms.origArgs
 
 	app.SetListenAddr(app.DefaultServerAddress)
@@ -43,7 +61,37 @@ func (ms *MainSuite) TearDownTest() {
 	}
 }
 
-func (ms *MainSuite) Test_readConfig() {
+func (ms *MainSuite) TestServerAddress() {
+	tests := []struct {
+		env, arg, expected string
+	}{
+		{skip, skip, app.DefaultServerAddress},
+		{skip, "localhost:8088", "localhost:8088"},
+		{"localhost:8088", skip, "localhost:8088"},
+		{"localhost:9099", "localhost:8088", "localhost:9099"},
+	}
+
+	for i, t := range tests {
+		name := fmt.Sprintf("server address %d", i+1)
+		ms.Run(name, func() {
+			if t.env != skip {
+				os.Setenv("SERVER_ADDRESS", t.env)
+			}
+			if t.arg != skip {
+				os.Args = []string{"", "-a", t.arg}
+			} else {
+				// avoid errors due to unknown flags from go test
+				os.Args = []string{""}
+			}
+			ms.startServer()
+
+			ms.Equal(t.expected, ms.server.Addr)
+			ms.shorten(sampleURL, app.DefaultBaseURL)
+		})
+	}
+}
+
+func (ms *MainSuite) TestCommandArgs() {
 	const listen = "localhost:8088"
 	const redirect = "http://example.com:1024"
 	os.Args = []string{"", "-a", listen, "-b", redirect}
@@ -62,25 +110,6 @@ func (ms *MainSuite) Test_readConfigWithDefaultListenAddress() {
 
 	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
 	ms.shorten(sampleURL, baseURL)
-}
-
-func (ms *MainSuite) Test_readConfigWithDefaultRedirectAddress() {
-	const listen = "localhost:8099"
-	os.Args = []string{"", "-a", listen}
-
-	ms.startServer()
-
-	ms.Equal(listen, ms.server.Addr)
-	ms.shorten(sampleURL, app.DefaultBaseURL)
-}
-
-func (ms *MainSuite) Test_readConfig_Defaults() {
-	os.Args = []string{""}
-
-	ms.startServer()
-
-	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
-	ms.shorten(sampleURL, app.DefaultBaseURL)
 }
 
 func (ms *MainSuite) Test_readConfigWithEnvServerAddress() {
