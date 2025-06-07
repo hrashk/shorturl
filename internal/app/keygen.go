@@ -1,22 +1,22 @@
 package app
 
-type Base62Generator struct {
+type base62Generator struct {
 	counter chan uint64
 }
 
-func newBase62Generator() Base62Generator {
+func newBase62Generator() base62Generator {
 	c := make(chan uint64)
 
 	go count(c)
 
-	return Base62Generator{c}
+	return base62Generator{c}
 }
 func count(counter chan uint64) {
 	for i := uint64(1); ; i++ {
 		counter <- i
 	}
 }
-func (g Base62Generator) Generate(url string) (key string) {
+func (g base62Generator) Generate(url string) (key string) {
 	num := <-g.counter
 	key = encode(num)
 

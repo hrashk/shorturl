@@ -7,16 +7,16 @@ import (
 	"net/http"
 )
 
-type Service interface {
+type service interface {
 	CreateShortURL(url string) (shortURL string, err error)
 	LookUp(key string) (url string, err error)
 }
 
 type shortURLController struct {
-	Service Service
+	Service service
 }
 
-func newShortURLController(service Service) shortURLController {
+func newShortURLController(service service) shortURLController {
 	return shortURLController{service}
 }
 
