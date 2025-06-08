@@ -15,6 +15,7 @@ import (
 )
 
 const sampleURL = "https://pkg.go.dev/cmp"
+const anotherURL = "https://pkg.go.dev/errors"
 const skip = "#"
 
 type MainSuite struct {
@@ -45,6 +46,9 @@ func (ms *MainSuite) TearDownSubTest() {
 
 func (ms *MainSuite) setUp() {
 	ms.origArgs = os.Args
+	http.DefaultClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 
 	// avoid errors due to unknown flags from go test
 	os.Args = []string{os.Args[0]}
@@ -131,6 +135,9 @@ func (ms *MainSuite) TestCommandArgs() {
 
 	url := ms.lookUp(key)
 	ms.Equal(sampleURL, url)
+
+	key2 := ms.shorten(anotherURL, baseURL)
+	ms.NotEqual(key, key2, "duplicate key")
 }
 
 func (ms *MainSuite) TestEnvVars() {

@@ -23,10 +23,11 @@ func TestControllerSuite(t *testing.T) {
 }
 
 func (suite *ControllerSuite) SetupTest() {
-	cfg, err := newConfig(Logger(suite))
+	cfg, err := newConfig(Logger(suite), StoragePath(""))
 	suite.Require().NoError(err)
 
-	h := newHandler(cfg)
+	h, err := newHandler(cfg)
+	suite.Require().NoError(err)
 
 	suite.srv = httptest.NewServer(h)
 	suite.srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {

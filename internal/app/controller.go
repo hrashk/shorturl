@@ -16,10 +16,6 @@ type shortURLController struct {
 	Service service
 }
 
-func newShortURLController(service service) shortURLController {
-	return shortURLController{service}
-}
-
 func (c shortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(r.Body)
 

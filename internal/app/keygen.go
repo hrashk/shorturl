@@ -4,15 +4,15 @@ type base62Generator struct {
 	counter chan uint64
 }
 
-func newBase62Generator() base62Generator {
+func newBase62Generator(initial uint64) base62Generator {
 	c := make(chan uint64)
 
-	go count(c)
+	go count(c, initial)
 
 	return base62Generator{c}
 }
-func count(counter chan uint64) {
-	for i := uint64(1); ; i++ {
+func count(counter chan uint64, initial uint64) {
+	for i := uint64(initial); ; i++ {
 		counter <- i
 	}
 }

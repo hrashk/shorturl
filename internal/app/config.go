@@ -16,13 +16,14 @@ type config struct {
 	serverAddress string
 	baseURL       string
 	log           logger
-	storage       storage
+	StoragePath   string
 }
 
 func newConfig(modifiers ...CfgModifier) (*config, error) {
 	cfg := &config{
 		serverAddress: DefaultServerAddress,
 		baseURL:       DefaultBaseURL,
+		StoragePath:   DefaultStoragePath,
 	}
 
 	for _, m := range modifiers {
@@ -33,9 +34,6 @@ func newConfig(modifiers ...CfgModifier) (*config, error) {
 
 	if cfg.log == nil {
 		cfg.log = newZeroLogger()
-	}
-	if cfg.storage == nil {
-		cfg.storage = newInMemStorage()
 	}
 
 	return cfg, nil
@@ -74,12 +72,7 @@ func Logger(log logger) CfgModifier {
 
 func StoragePath(path string) CfgModifier {
 	return func(cfg *config) error {
-		s, err := newFileStorage(path)
-
-		if err == nil {
-			cfg.storage = s
-		}
-
-		return err
+		cfg.StoragePath = path
+		return nil
 	}
 }

@@ -11,18 +11,20 @@ func NewServer(modifiers ...CfgModifier) (*http.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	h, err := newHandler(cfg)
+	if err != nil {
+		return nil, err
+	}
 
-	return &http.Server{Addr: cfg.serverAddress, Handler: newHandler(cfg)}, nil
+	return &http.Server{Addr: cfg.serverAddress, Handler: h}, nil
 }
 
-func newInMemoryController(cfg *config) shortURLController {
-	s := newShortURLService(newBase62Generator(), cfg.storage, cfg.baseURL)
-
-	return newShortURLController(s)
-}
-
-func newHandler(cfg *config) http.Handler {
-	c := newInMemoryController(cfg)
+func newHandler(cfg *config) (http.Handler, error) {
+	s, err := newService(cfg)
+	if err != nil {
+		return nil, err
+	}
+	c := shortURLController{s}
 
 	r := chi.NewRouter()
 	r.Use(loggingMiddleware(cfg.log))
@@ -36,5 +38,5 @@ func newHandler(cfg *config) http.Handler {
 		http.Error(w, "Operation is not supported", http.StatusBadRequest)
 	})
 
-	return r
+	return r, nil
 }

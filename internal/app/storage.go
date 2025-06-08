@@ -34,22 +34,17 @@ func (s inMemStorage) LookUp(key string) (url string, err error) {
 
 type fileStorage struct {
 	storage
-	uuid int
 	file *os.File
 }
 
-func newFileStorage(path string) (*fileStorage, error) {
-	fs := &fileStorage{
+func newFileStorage(path string) (fileStorage, error) {
+	fs := fileStorage{
 		storage: newInMemStorage(),
-	}
-
-	if err := fs.readFile(path); err != nil {
-		return nil, err
 	}
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", path, err)
+		return fs, fmt.Errorf("failed to open file %s: %w", path, err)
 	}
 	fs.file = f
 
@@ -60,10 +55,11 @@ type urlRec struct {
 	Uuid, Short_url, Original_url string
 }
 
-func (fs *fileStorage) readFile(path string) error {
+func (fs fileStorage) readFile(path string) (uuid uint64, err error) {
 	file, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return fmt.Errorf("failed to open file %s: %w", path, err)
+		err = fmt.Errorf("failed to open file %s: %w", path, err)
+		return
 	}
 	defer file.Close()
 
@@ -74,30 +70,33 @@ func (fs *fileStorage) readFile(path string) error {
 
 		rec := urlRec{}
 		if err = json.Unmarshal(bytes, &rec); err != nil {
-			return fmt.Errorf("failed to parse %s: %w", string(bytes), err)
+			err = fmt.Errorf("failed to parse %s: %w", string(bytes), err)
+			return
 		}
 
 		if err = fs.storage.Store(rec.Short_url, rec.Original_url); err != nil {
-			return err
+			return
 		}
 
-		uuid, err := strconv.Atoi(rec.Uuid)
-		if err != nil {
-			return fmt.Errorf("failed to convert %s to int: %w", rec.Uuid, err)
+		id, e := strconv.ParseUint(rec.Uuid, 10, 64)
+		if e != nil {
+			err = fmt.Errorf("failed to convert %s to int: %w", rec.Uuid, e)
+			return
 		}
-		fs.uuid = uuid
+		if id > uuid {
+			uuid = id
+		}
 	}
-
-	return scanner.Err()
+	err = scanner.Err()
+	return
 }
 
-func (fs *fileStorage) Store(key string, url string) error {
+func (fs fileStorage) Store(key string, url string) error {
 	if err := fs.storage.Store(key, url); err != nil {
 		return err
 	}
 
-	fs.uuid++
-	rec := urlRec{strconv.Itoa(fs.uuid), key, url}
+	rec := urlRec{strconv.Itoa(0), key, url} // todo fix
 
 	return json.NewEncoder(fs.file).Encode(&rec)
 }
