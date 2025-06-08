@@ -62,7 +62,9 @@ func (fs fileStorage) Store(key string, url string) error {
 }
 
 type urlRec struct {
-	UUID, ShortURL, OriginalURL string
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func readFile(st storage, path string) (uuid uint64, err error) {

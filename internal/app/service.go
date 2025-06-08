@@ -28,7 +28,6 @@ func newService(cfg *config) (s service, err error) {
 		if err != nil {
 			return
 		}
-		fmt.Println("creating file storage")
 		st, err = newFileStorage(st, cfg.StoragePath)
 		if err != nil {
 			return
