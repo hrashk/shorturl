@@ -37,9 +37,9 @@ type fileStorage struct {
 	file *os.File
 }
 
-func newFileStorage(path string) (fileStorage, error) {
+func newFileStorage(st storage, path string) (fileStorage, error) {
 	fs := fileStorage{
-		storage: newInMemStorage(),
+		storage: st,
 	}
 
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
@@ -51,11 +51,21 @@ func newFileStorage(path string) (fileStorage, error) {
 	return fs, nil
 }
 
-type urlRec struct {
-	Uuid, Short_url, Original_url string
+func (fs fileStorage) Store(key string, url string) error {
+	if err := fs.storage.Store(key, url); err != nil {
+		return err
+	}
+
+	rec := urlRec{strconv.Itoa(0), key, url} // todo fix
+
+	return json.NewEncoder(fs.file).Encode(&rec)
 }
 
-func (fs fileStorage) readFile(path string) (uuid uint64, err error) {
+type urlRec struct {
+	UUID, ShortURL, OriginalURL string
+}
+
+func readFile(st storage, path string) (uuid uint64, err error) {
 	file, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		err = fmt.Errorf("failed to open file %s: %w", path, err)
@@ -74,13 +84,13 @@ func (fs fileStorage) readFile(path string) (uuid uint64, err error) {
 			return
 		}
 
-		if err = fs.storage.Store(rec.Short_url, rec.Original_url); err != nil {
+		if err = st.Store(rec.ShortURL, rec.OriginalURL); err != nil {
 			return
 		}
 
-		id, e := strconv.ParseUint(rec.Uuid, 10, 64)
+		id, e := strconv.ParseUint(rec.UUID, 10, 64)
 		if e != nil {
-			err = fmt.Errorf("failed to convert %s to int: %w", rec.Uuid, e)
+			err = fmt.Errorf("failed to convert %s to int: %w", rec.UUID, e)
 			return
 		}
 		if id > uuid {
@@ -89,14 +99,4 @@ func (fs fileStorage) readFile(path string) (uuid uint64, err error) {
 	}
 	err = scanner.Err()
 	return
-}
-
-func (fs fileStorage) Store(key string, url string) error {
-	if err := fs.storage.Store(key, url); err != nil {
-		return err
-	}
-
-	rec := urlRec{strconv.Itoa(0), key, url} // todo fix
-
-	return json.NewEncoder(fs.file).Encode(&rec)
 }

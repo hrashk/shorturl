@@ -21,18 +21,20 @@ func newService(cfg *config) (s service, err error) {
 	var st storage
 	var uuid uint64
 
-	if cfg.StoragePath == "" {
-		st = newInMemStorage()
-	} else {
-		st, err = newFileStorage(cfg.StoragePath)
+	st = newInMemStorage()
+
+	if cfg.StoragePath != "" {
+		uuid, err = readFile(st, cfg.StoragePath)
 		if err != nil {
 			return
 		}
-		uuid, err = st.(fileStorage).readFile(cfg.StoragePath)
+		fmt.Println("creating file storage")
+		st, err = newFileStorage(st, cfg.StoragePath)
 		if err != nil {
 			return
 		}
 	}
+
 	kg := newBase62Generator(uuid + 1)
 	s = &shortURLService{kg, st, cfg.baseURL}
 

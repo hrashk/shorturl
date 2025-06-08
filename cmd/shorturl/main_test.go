@@ -17,6 +17,7 @@ import (
 const sampleURL = "https://pkg.go.dev/cmp"
 const anotherURL = "https://pkg.go.dev/errors"
 const skip = "#"
+const storagePath = "/tmp/urls.json"
 
 type MainSuite struct {
 	suite.Suite
@@ -46,12 +47,22 @@ func (ms *MainSuite) TearDownSubTest() {
 
 func (ms *MainSuite) setUp() {
 	ms.origArgs = os.Args
+
 	http.DefaultClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 
+	ms.deleteFile(app.DefaultStoragePath)
+	ms.deleteFile(storagePath)
+
 	// avoid errors due to unknown flags from go test
 	os.Args = []string{os.Args[0]}
+}
+
+func (ms *MainSuite) deleteFile(path string) {
+	if err := os.Remove(path); err != nil {
+		ms.ErrorIs(err, os.ErrNotExist, "failed to delete file %s", path)
+	}
 }
 
 func (ms *MainSuite) tearDown() {
@@ -122,8 +133,7 @@ func (ms *MainSuite) TestBaseURL() {
 func (ms *MainSuite) TestCommandArgs() {
 	const addr = "localhost:8088"
 	const baseURL = "http://example.com:1024"
-	const fpath = "/tmp/urls.json"
-	os.Args = []string{"", "-a", addr, "-b", baseURL, "-f", fpath}
+	os.Args = []string{"", "-a", addr, "-b", baseURL, "-f", storagePath}
 
 	ms.startServer()
 
