@@ -10,6 +10,12 @@ import (
 	"github.com/hrashk/shorturl/internal/app"
 )
 
+const (
+	serverAddressEnv   = "SERVER_ADDRESS"
+	baseURLEnv         = "BASE_URL"
+	fileStoragePathEnv = "FILE_STORAGE_PATH"
+)
+
 func main() {
 	_, ch := startServer()
 
@@ -52,20 +58,20 @@ func readConfig() ([]app.Configurator, error) {
 
 	var argAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
 	var argBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
-	var argStoragePath = fs.String("f", app.DefaultStoragePath, "File storage path")
+	var argFilePath = fs.String("f", app.DefaultStoragePath, "File storage path")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, fmt.Errorf("failed to parse command arguments: %w", err)
 	}
 
-	addr := argOrEnv(argAddr, "SERVER_ADDRESS")
-	baseURL := argOrEnv(argBaseURL, "BASE_URL")
-	storagePath := argOrEnv(argStoragePath, "FILE_STORAGE_PATH")
+	addr := argOrEnv(argAddr, serverAddressEnv)
+	baseURL := argOrEnv(argBaseURL, baseURLEnv)
+	filePath := argOrEnv(argFilePath, fileStoragePathEnv)
 
 	return []app.Configurator{
 		app.ServerAddress(addr),
 		app.BaseURL(baseURL),
-		app.StoragePath(storagePath),
+		app.StoragePath(filePath),
 	}, nil
 }
 

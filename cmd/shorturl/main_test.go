@@ -14,10 +14,21 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const sampleURL = "https://pkg.go.dev/cmp"
-const anotherURL = "https://pkg.go.dev/errors"
-const skip = "#"
-const storagePath = "/tmp/urls.json"
+const (
+	sampleURL  = "https://pkg.go.dev/cmp"
+	anotherURL = "https://pkg.go.dev/errors"
+
+	samplePath  = "/tmp/sample-urls.json"
+	anotherPath = "/tmp/other-urls.json"
+
+	sampleAddr  = "localhost:8088"
+	anotherAddr = "localhost:9099"
+
+	sampleBaseURL  = "http://example.com:1024"
+	anotherBaseURL = "http://example.com:4201"
+
+	skip = "#"
+)
 
 type MainSuite struct {
 	suite.Suite
@@ -53,7 +64,7 @@ func (ms *MainSuite) setUp() {
 	}
 
 	ms.deleteFile(app.DefaultStoragePath)
-	ms.deleteFile(storagePath)
+	ms.deleteFile(samplePath)
 
 	// avoid errors due to unknown flags from go test
 	os.Args = []string{os.Args[0]}
@@ -68,8 +79,9 @@ func (ms *MainSuite) deleteFile(path string) {
 func (ms *MainSuite) tearDown() {
 	os.Args = ms.origArgs
 
-	os.Unsetenv("SERVER_ADDRESS")
-	os.Unsetenv("BASE_URL")
+	os.Unsetenv(serverAddressEnv)
+	os.Unsetenv(baseURLEnv)
+	os.Unsetenv(fileStoragePathEnv)
 
 	if ms.server != nil {
 		ms.server.Close()
@@ -81,16 +93,16 @@ func (ms *MainSuite) TestServerAddress() {
 		env, arg, expected string
 	}{
 		{skip, skip, app.DefaultServerAddress},
-		{skip, "localhost:8088", "localhost:8088"},
-		{"localhost:8088", skip, "localhost:8088"},
-		{"localhost:9099", "localhost:8088", "localhost:9099"},
+		{skip, sampleAddr, sampleAddr},
+		{sampleAddr, skip, sampleAddr},
+		{anotherAddr, sampleAddr, anotherAddr},
 	}
 
 	for i, t := range tests {
 		name := fmt.Sprintf("server address %d", i+1)
 		ms.Run(name, func() {
 			if t.env != skip {
-				os.Setenv("SERVER_ADDRESS", t.env)
+				os.Setenv(serverAddressEnv, t.env)
 			}
 			if t.arg != skip {
 				os.Args = append(os.Args, "-a", t.arg)
@@ -108,16 +120,16 @@ func (ms *MainSuite) TestBaseURL() {
 		env, arg, expected string
 	}{
 		{skip, skip, app.DefaultBaseURL},
-		{skip, "http://example.com:1024", "http://example.com:1024"},
-		{"http://example.com:1024", skip, "http://example.com:1024"},
-		{"http://example.com:1024", "http://example.com:4201", "http://example.com:1024"},
+		{skip, sampleBaseURL, sampleBaseURL},
+		{sampleBaseURL, skip, sampleBaseURL},
+		{anotherBaseURL, sampleBaseURL, anotherBaseURL},
 	}
 
 	for i, t := range tests {
 		name := fmt.Sprintf("base URL %d", i+1)
 		ms.Run(name, func() {
 			if t.env != skip {
-				os.Setenv("BASE_URL", t.env)
+				os.Setenv(baseURLEnv, t.env)
 			}
 			if t.arg != skip {
 				os.Args = append(os.Args, "-b", t.arg)
@@ -130,34 +142,55 @@ func (ms *MainSuite) TestBaseURL() {
 	}
 }
 
-func (ms *MainSuite) TestCommandArgs() {
-	const addr = "localhost:8088"
-	const baseURL = "http://example.com:1024"
-	os.Args = []string{"", "-a", addr, "-b", baseURL, "-f", storagePath}
+func (ms *MainSuite) TestFileStoragePath() {
+	tests := []struct {
+		env, arg, expected string
+	}{
+		{skip, skip, app.DefaultStoragePath},
+		{skip, samplePath, samplePath},
+		{samplePath, skip, samplePath},
+		{anotherPath, samplePath, anotherPath},
+	}
 
-	ms.checkNonDefaultConfig(addr, baseURL)
+	for i, t := range tests {
+		name := fmt.Sprintf("storage path %d", i+1)
+		ms.Run(name, func() {
+			if t.env != skip {
+				os.Setenv(fileStoragePathEnv, t.env)
+			}
+			if t.arg != skip {
+				os.Args = append(os.Args, "-f", t.arg)
+			}
+			ms.checkFileStorage(app.DefaultServerAddress, app.DefaultBaseURL, t.expected)
+		})
+	}
+}
+
+func (ms *MainSuite) TestCommandArgs() {
+	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL, "-f", samplePath}
+
+	ms.checkFileStorage(sampleAddr, sampleBaseURL, samplePath)
+	ms.NoFileExists(app.DefaultStoragePath)
 }
 
 func (ms *MainSuite) TestEnvVars() {
-	const addr = "localhost:8088"
-	const baseURL = "http://example.com:1024"
-	os.Setenv("SERVER_ADDRESS", addr)
-	os.Setenv("BASE_URL", baseURL)
-	os.Setenv("FILE_STORAGE_PATH", storagePath)
+	os.Setenv(serverAddressEnv, sampleAddr)
+	os.Setenv(baseURLEnv, sampleBaseURL)
+	os.Setenv(fileStoragePathEnv, samplePath)
 
-	ms.checkNonDefaultConfig(addr, baseURL)
+	ms.checkFileStorage(sampleAddr, sampleBaseURL, samplePath)
+	ms.NoFileExists(app.DefaultStoragePath)
 }
 
-func (ms *MainSuite) checkNonDefaultConfig(addr string, baseURL string) {
+func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath string) {
 	ms.startServer()
 
 	ms.Equal(addr, ms.server.Addr)
 	key := ms.shorten(sampleURL, baseURL)
 
-	ms.FileExists(storagePath)
-	ms.NoFileExists(app.DefaultStoragePath)
-
 	ms.server.Close()
+	ms.FileExists(filePath)
+
 	ms.startServer()
 
 	url := ms.lookUp(key)
