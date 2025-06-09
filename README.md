@@ -28,17 +28,30 @@ go build -C ./cmd/shorturl
 
 ## Configuration
 
-You may specify either environment variables
+View the help for all available command line options, including the supported environment variables.
 ```bash
-SERVER_ADDRESS=":9999" BASE_URL="http://example.com" ./cmd/shorturl/shorturl
+./cmd/shorturl/shorturl -h
 ```
 
-and/or command-line args
+Environment variables have higher priority than the respective command line args.
+Both can be mixed in a single execution.
 ```bash
-./cmd/shorturl/shorturl -a ":9999" -b "http://example.com"
+SERVER_ADDRESS=":9999" ./cmd/shorturl/shorturl -b "http://example.com"
 ```
 
-## Usage
+By default, data is stored in a file on disk and loaded back when the server is restarted.
+File storage can be disabled when passing empty value to the respective option.
+```bash
+./cmd/shorturl/shorturl -f=
+```
+
+or
+```bash
+FILE_STORAGE_PATH="" ./cmd/shorturl/shorturl
+```
+
+
+## Usage examples
 
 Example of shortening a URL
 ```bash
