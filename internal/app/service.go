@@ -2,17 +2,13 @@ package app
 
 import "fmt"
 
-type shortKeyGenerator interface {
-	Generate(url string) (key string)
-}
-
-type storage interface {
-	Store(key string, url string) error
+type service interface {
+	CreateShortURL(url string) (shortURL string, err error)
 	LookUp(key string) (url string, err error)
 }
 
 type shortURLService struct {
-	keyGenerator shortKeyGenerator
+	keyGenerator keyGenerator
 	storage      storage
 	baseURL      string
 }

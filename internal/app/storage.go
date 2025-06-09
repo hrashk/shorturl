@@ -10,6 +10,11 @@ import (
 	"sync"
 )
 
+type storage interface {
+	Store(key string, url string) error
+	LookUp(key string) (url string, err error)
+}
+
 type inMemStorage struct {
 	data *sync.Map
 }

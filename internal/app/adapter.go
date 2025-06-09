@@ -7,16 +7,11 @@ import (
 	"net/http"
 )
 
-type service interface {
-	CreateShortURL(url string) (shortURL string, err error)
-	LookUp(key string) (url string, err error)
-}
-
-type shortURLController struct {
+type adapter struct {
 	Service service
 }
 
-func (c shortURLController) CreateShortURL(w http.ResponseWriter, r *http.Request) {
+func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -25,7 +20,7 @@ func (c shortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 	}
 
 	url := string(raw)
-	shortURL, err := c.Service.CreateShortURL(url)
+	shortURL, err := a.Service.CreateShortURL(url)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
@@ -36,7 +31,7 @@ func (c shortURLController) CreateShortURL(w http.ResponseWriter, r *http.Reques
 	io.WriteString(w, shortURL)
 }
 
-func (c shortURLController) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
+func (c adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
 	url, err := c.Service.LookUp(key)
@@ -56,7 +51,7 @@ type ShortURLResponse struct {
 	Result string `json:"result"`
 }
 
-func (c shortURLController) ShortenAPI(w http.ResponseWriter, r *http.Request) {
+func (c adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	var req ShortURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)

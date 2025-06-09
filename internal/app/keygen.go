@@ -1,5 +1,9 @@
 package app
 
+type keyGenerator interface {
+	Generate(url string) (key string)
+}
+
 type base62Generator struct {
 	counter chan uint64
 }

@@ -24,16 +24,16 @@ func newHandler(cfg *config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := shortURLController{s}
+	a := adapter{s}
 
 	r := chi.NewRouter()
 	r.Use(loggingMiddleware(cfg.log))
 	r.Use(newGzipDeflator())
 	r.Use(newGzipInflator())
 
-	r.Get("/{key}", c.RedirectToOriginalURL)
-	r.Post("/", c.CreateShortURL)
-	r.Post("/api/shorten", c.ShortenAPI)
+	r.Get("/{key}", a.RedirectToOriginalURL)
+	r.Post("/", a.CreateShortURL)
+	r.Post("/api/shorten", a.ShortenAPI)
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Operation is not supported", http.StatusBadRequest)
 	})
