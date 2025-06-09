@@ -19,7 +19,7 @@ type config struct {
 	storagePath   string
 }
 
-func newConfig(modifiers ...CfgModifier) (config, error) {
+func newConfig(modifiers ...Configurator) (config, error) {
 	cfg := config{
 		serverAddress: DefaultServerAddress,
 		baseURL:       DefaultBaseURL,
@@ -39,9 +39,9 @@ func newConfig(modifiers ...CfgModifier) (config, error) {
 	return cfg, nil
 }
 
-type CfgModifier func(*config) error
+type Configurator func(*config) error
 
-func ServerAddress(addr string) CfgModifier {
+func ServerAddress(addr string) Configurator {
 	return func(cfg *config) error {
 		_, port, err := net.SplitHostPort(addr)
 		if err != nil || port == "" {
@@ -52,7 +52,7 @@ func ServerAddress(addr string) CfgModifier {
 	}
 }
 
-func BaseURL(baseURL string) CfgModifier {
+func BaseURL(baseURL string) Configurator {
 	return func(cfg *config) error {
 		u, err := url.Parse(baseURL)
 		if err != nil || u.Scheme == "" || u.Host == "" {
@@ -63,14 +63,14 @@ func BaseURL(baseURL string) CfgModifier {
 	}
 }
 
-func Logger(log logger) CfgModifier {
+func Logger(log logger) Configurator {
 	return func(cfg *config) error {
 		cfg.log = log
 		return nil
 	}
 }
 
-func StoragePath(path string) CfgModifier {
+func StoragePath(path string) Configurator {
 	return func(cfg *config) error {
 		cfg.storagePath = path
 		return nil

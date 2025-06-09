@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewServer(modifiers ...CfgModifier) (*http.Server, error) {
+func NewServer(modifiers ...Configurator) (*http.Server, error) {
 	cfg, err := newConfig(modifiers...)
 	if err != nil {
 		return nil, err

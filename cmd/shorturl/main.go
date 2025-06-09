@@ -47,7 +47,7 @@ func buildServer() (*http.Server, error) {
 	return app.NewServer(mods...)
 }
 
-func readConfig() ([]app.CfgModifier, error) {
+func readConfig() ([]app.Configurator, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
 	var argAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
@@ -62,7 +62,7 @@ func readConfig() ([]app.CfgModifier, error) {
 	baseURL := argOrEnv(argBaseURL, "BASE_URL")
 	storagePath := argOrEnv(argStoragePath, "FILE_STORAGE_PATH")
 
-	return []app.CfgModifier{
+	return []app.Configurator{
 		app.ServerAddress(addr),
 		app.BaseURL(baseURL),
 		app.StoragePath(storagePath),
