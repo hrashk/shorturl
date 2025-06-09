@@ -11,8 +11,8 @@ import (
 )
 
 type storage interface {
-	Store(key string, url string) error
-	LookUp(key string) (url string, err error)
+	Store(key shortKey, url string) error
+	LookUp(shortURL string) (url string, err error)
 }
 
 type inMemStorage struct {
@@ -45,15 +45,15 @@ func newInMemStorage() inMemStorage {
 		data: &sync.Map{},
 	}
 }
-func (s inMemStorage) Store(key string, url string) error {
-	s.data.Store(key, url)
+func (s inMemStorage) Store(key shortKey, url string) error {
+	s.data.Store(key.shortURL, url)
 
 	return nil
 }
-func (s inMemStorage) LookUp(key string) (url string, err error) {
-	v, ok := s.data.Load(key)
+func (s inMemStorage) LookUp(shortURL string) (url string, err error) {
+	v, ok := s.data.Load(shortURL)
 	if !ok {
-		return "", errors.New("key not found: " + key)
+		return "", errors.New("short URL not found: " + shortURL)
 	}
 	return v.(string), nil
 }
@@ -72,12 +72,12 @@ func newFileStorage(st storage, path string) (fileStorage, error) {
 	return fs, nil
 }
 
-func (fs fileStorage) Store(key string, url string) error {
+func (fs fileStorage) Store(key shortKey, url string) error {
 	if err := fs.storage.Store(key, url); err != nil {
 		return err
 	}
 
-	rec := urlRec{strconv.Itoa(0), key, url} // todo fix
+	rec := urlRec{strconv.FormatUint(key.uuid, 10), key.shortURL, url}
 
 	return json.NewEncoder(fs.file).Encode(&rec)
 }
@@ -107,15 +107,15 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 			return
 		}
 
-		if err = st.Store(rec.ShortURL, rec.OriginalURL); err != nil {
-			return
-		}
-
 		id, e := strconv.ParseUint(rec.UUID, 10, 64)
 		if e != nil {
 			err = fmt.Errorf("failed to convert %s to int: %w", rec.UUID, e)
 			return
 		}
+		if err = st.Store(shortKey{id, rec.ShortURL}, rec.OriginalURL); err != nil {
+			return
+		}
+
 		if id > uuid {
 			uuid = id
 		}

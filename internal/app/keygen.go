@@ -1,7 +1,12 @@
 package app
 
 type keyGenerator interface {
-	Generate(url string) (key string)
+	Generate(url string) shortKey
+}
+
+type shortKey struct {
+	uuid     uint64
+	shortURL string
 }
 
 type base62Generator struct {
@@ -20,11 +25,13 @@ func count(counter chan uint64, initial uint64) {
 		counter <- i
 	}
 }
-func (g base62Generator) Generate(url string) (key string) {
-	num := <-g.counter
-	key = encode(num)
+func (g base62Generator) Generate(url string) shortKey {
+	uuid := <-g.counter
 
-	return key
+	return shortKey{
+		uuid:     uuid,
+		shortURL: encode(uuid),
+	}
 }
 func encode(num uint64) string {
 	const base62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

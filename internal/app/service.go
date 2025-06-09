@@ -24,9 +24,9 @@ func newService(cfg config) (s service, err error) {
 func (s shortURLService) CreateShortURL(url string) (shortURL string, err error) {
 	key := s.keyGenerator.Generate(url)
 	if err := s.storage.Store(key, url); err != nil {
-		return "", fmt.Errorf("failed to store key %s: [%w]", key, err)
+		return "", fmt.Errorf("failed to store key %v: [%w]", key, err)
 	}
-	shortURL = s.baseURL + "/" + key
+	shortURL = s.baseURL + "/" + key.shortURL
 	return shortURL, nil
 }
 
