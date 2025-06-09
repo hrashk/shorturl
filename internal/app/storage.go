@@ -19,6 +19,27 @@ type inMemStorage struct {
 	data *sync.Map
 }
 
+type fileStorage struct {
+	storage
+	file *os.File
+}
+
+func newStorage(cfg *config) (st storage, uuid uint64, err error) {
+	st = newInMemStorage()
+
+	if cfg.storagePath != "" {
+		uuid, err = readFile(st, cfg.storagePath)
+		if err != nil {
+			return
+		}
+		st, err = newFileStorage(st, cfg.storagePath)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 func newInMemStorage() inMemStorage {
 	return inMemStorage{
 		data: &sync.Map{},
@@ -35,11 +56,6 @@ func (s inMemStorage) LookUp(key string) (url string, err error) {
 		return "", errors.New("key not found: " + key)
 	}
 	return v.(string), nil
-}
-
-type fileStorage struct {
-	storage
-	file *os.File
 }
 
 func newFileStorage(st storage, path string) (fileStorage, error) {

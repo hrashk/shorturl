@@ -14,22 +14,7 @@ type shortURLService struct {
 }
 
 func newService(cfg *config) (s service, err error) {
-	var st storage
-	var uuid uint64
-
-	st = newInMemStorage()
-
-	if cfg.StoragePath != "" {
-		uuid, err = readFile(st, cfg.StoragePath)
-		if err != nil {
-			return
-		}
-		st, err = newFileStorage(st, cfg.StoragePath)
-		if err != nil {
-			return
-		}
-	}
-
+	st, uuid, err := newStorage(cfg)
 	kg := newBase62Generator(uuid + 1)
 	s = &shortURLService{kg, st, cfg.baseURL}
 
