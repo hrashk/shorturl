@@ -31,10 +31,10 @@ func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, shortURL)
 }
 
-func (c adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
+func (a adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
-	url, err := c.Service.LookUp(key)
+	url, err := a.Service.LookUp(key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -51,14 +51,14 @@ type ShortURLResponse struct {
 	Result string `json:"result"`
 }
 
-func (c adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
+func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	var req ShortURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	shortURL, err := c.Service.CreateShortURL(req.URL)
+	shortURL, err := a.Service.CreateShortURL(req.URL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to store URL: %v", err), http.StatusInternalServerError)
 		return
