@@ -9,7 +9,8 @@ import (
 )
 
 type logger interface {
-	Info(msg string, fields ...any)
+	Info(msg string, v ...any)
+	Error(msg string, err error, v ...any)
 }
 
 type zeroLogger struct {
@@ -22,8 +23,12 @@ func newZeroLogger() zeroLogger {
 	return zeroLogger{logger: zl}
 }
 
-func (zl zeroLogger) Info(msg string, fields ...any) {
-	zl.logger.Info().Fields(fields).Msg(msg)
+func (zl zeroLogger) Info(msg string, v ...any) {
+	zl.logger.Info().Msgf(msg, v...)
+}
+
+func (zl zeroLogger) Error(msg string, err error, v ...any) {
+	zl.logger.Err(err).Msgf(msg, v...)
 }
 
 func loggingMiddleware(l logger) func(h http.Handler) http.Handler {
@@ -38,12 +43,12 @@ func loggingMiddleware(l logger) func(h http.Handler) http.Handler {
 
 			duration := time.Since(start)
 
-			l.Info("",
-				"uri", r.RequestURI,
-				"method", r.Method,
-				"status", rw.status,
-				"duration", duration,
-				"size", rw.size,
+			l.Info("uri=%v, method=%v, status=%v, duration=%v, size=%v",
+				r.RequestURI,
+				r.Method,
+				rw.status,
+				duration,
+				rw.size,
 			)
 		}
 

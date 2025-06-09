@@ -8,8 +8,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-
-	"github.com/rs/zerolog/log"
 )
 
 type storage interface {
@@ -23,7 +21,8 @@ type inMemStorage struct {
 
 type fileStorage struct {
 	storage
-	ch chan urlRec
+	log logger
+	ch  chan urlRec
 }
 
 func newStorage(cfg config) (st storage, uuid uint64, err error) {
@@ -34,7 +33,7 @@ func newStorage(cfg config) (st storage, uuid uint64, err error) {
 		if err != nil {
 			return
 		}
-		st, err = newFileStorage(st, cfg.storagePath)
+		st, err = newFileStorage(st, cfg)
 		if err != nil {
 			return
 		}
@@ -60,14 +59,15 @@ func (s inMemStorage) LookUp(shortURL string) (url string, err error) {
 	return v.(string), nil
 }
 
-func newFileStorage(st storage, path string) (fileStorage, error) {
+func newFileStorage(st storage, cfg config) (fileStorage, error) {
 	fs := fileStorage{
 		storage: st,
+		log:     cfg.log,
 	}
 
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile(cfg.storagePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return fs, fmt.Errorf("failed to open file %s: %w", path, err)
+		return fs, fmt.Errorf("failed to open file %s: %w", cfg.storagePath, err)
 	}
 	fs.ch = make(chan urlRec, 100)
 	go fs.storeRec(f)
@@ -80,7 +80,7 @@ func (fs fileStorage) storeRec(file *os.File) {
 		rec := <-fs.ch
 		err := json.NewEncoder(file).Encode(&rec)
 		if err != nil {
-			log.Err(err).Msgf("writing record %v to file %s", rec, file.Name())
+			fs.log.Error("writing record %v to file %s", err, rec, file.Name())
 		}
 	}
 }

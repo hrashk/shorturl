@@ -123,8 +123,12 @@ func (as *AdapterSuite) invokeLookup(key string) string {
 	return loc
 }
 
-func (as *AdapterSuite) Info(msg string, fields ...any) {
-	as.T().Logf(msg, fields...)
+func (as *AdapterSuite) Info(msg string, v ...any) {
+	as.T().Logf(msg, v...)
+}
+
+func (as *AdapterSuite) Error(msg string, err error, v ...any) {
+	as.T().Logf(msg+": error "+err.Error(), v...)
 }
 
 func (as *AdapterSuite) TestReceivingGzip() {
