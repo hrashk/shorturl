@@ -166,6 +166,45 @@ func (ms *MainSuite) TestFileStoragePath() {
 	}
 }
 
+func (ms *MainSuite) TestInMemStorage() {
+	tests := []struct {
+		env, arg string
+	}{
+		{skip, ""},
+		{"", skip},
+		{"", ""},
+		{"", app.DefaultStoragePath},
+	}
+
+	for i, t := range tests {
+		name := fmt.Sprintf("storage path %d", i+1)
+		ms.Run(name, func() {
+			if t.env != skip {
+				os.Setenv(fileStoragePathEnv, t.env)
+			}
+			if t.arg != skip {
+				os.Args = append(os.Args, "-f", t.arg)
+			}
+			ms.checkURLNotKeptAfterRestart()
+		})
+	}
+}
+
+func (ms *MainSuite) checkURLNotKeptAfterRestart() {
+	ms.startServer()
+
+	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
+	key := ms.shorten(sampleURL, app.DefaultBaseURL)
+
+	ms.server.Close()
+	ms.NoFileExists(app.DefaultStoragePath)
+
+	ms.startServer()
+
+	resp, _ := ms.httpGet("/" + key)
+	ms.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
+}
+
 func (ms *MainSuite) TestCommandArgs() {
 	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL, "-f", samplePath}
 
@@ -229,13 +268,13 @@ func (ms *MainSuite) callShortener(url string) string {
 
 	ms.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
 
-	return ms.readBody(resp)
+	return ms.readBody(resp.Body)
 }
 
-func (ms *MainSuite) readBody(resp *http.Response) string {
-	defer resp.Body.Close()
+func (ms *MainSuite) readBody(body io.ReadCloser) string {
+	defer body.Close()
 
-	bytes, err := io.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(body)
 	ms.Require().NoError(err, "Failed to read response body")
 
 	return string(bytes)
@@ -248,10 +287,8 @@ func (ms *MainSuite) post(contentType string, body string) *http.Response {
 	return resp
 }
 
-func (ms *MainSuite) lookUp(key string) string {
-	resp, err := http.Get(ms.serverAddress() + "/" + key)
-	ms.Require().NoError(err, "Failed to make request")
-	defer resp.Body.Close()
+func (ms *MainSuite) lookUp(shortURL string) string {
+	resp, _ := ms.httpGet("/" + shortURL)
 
 	ms.Equal(http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
 
@@ -259,6 +296,14 @@ func (ms *MainSuite) lookUp(key string) string {
 	ms.NotEmpty(loc, "Expected Location header to be set")
 
 	return loc
+}
+
+func (ms *MainSuite) httpGet(query string) (*http.Response, string) {
+	resp, err := http.Get(ms.serverAddress() + query)
+	ms.Require().NoError(err, "Failed to make request")
+	body := ms.readBody(resp.Body)
+
+	return resp, body
 }
 
 func (ms *MainSuite) serverAddress() string {
