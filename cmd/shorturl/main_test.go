@@ -202,6 +202,7 @@ func (ms *MainSuite) checkURLNotKeptAfterRestart() {
 	ms.startServer()
 
 	resp, _ := ms.httpGet("/" + key)
+	defer resp.Body.Close()
 	ms.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
 }
 
@@ -265,6 +266,7 @@ func (ms *MainSuite) extractKey(baseURL string, body string) string {
 
 func (ms *MainSuite) callShortener(url string) string {
 	resp := ms.post("text/plain", url)
+	defer resp.Body.Close()
 
 	ms.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
 
@@ -289,6 +291,7 @@ func (ms *MainSuite) post(contentType string, body string) *http.Response {
 
 func (ms *MainSuite) lookUp(shortURL string) string {
 	resp, _ := ms.httpGet("/" + shortURL)
+	defer resp.Body.Close()
 
 	ms.Equal(http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
 
