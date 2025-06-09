@@ -56,9 +56,12 @@ func buildServer() (*http.Server, error) {
 func readConfig() ([]app.Configurator, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
-	var argAddr = fs.String("a", app.DefaultServerAddress, "HTTP listen address")
-	var argBaseURL = fs.String("b", app.DefaultBaseURL, "Base URL for redirects")
-	var argFilePath = fs.String("f", app.DefaultStoragePath, "File storage path")
+	var argAddr = fs.String("a", app.DefaultServerAddress,
+		fmt.Sprintf("HTTP listen address. Alternatively, use %s environment variable.", serverAddressEnv))
+	var argBaseURL = fs.String("b", app.DefaultBaseURL,
+		fmt.Sprintf("Base URL for redirects. Alternatively, use %s environment variable.", baseURLEnv))
+	var argFilePath = fs.String("f", app.DefaultStoragePath,
+		fmt.Sprintf("File storage path. Alternatively, use %s environment variable.", fileStoragePathEnv))
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, fmt.Errorf("failed to parse command arguments: %w", err)
