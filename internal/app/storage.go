@@ -24,7 +24,7 @@ type fileStorage struct {
 	file *os.File
 }
 
-func newStorage(cfg *config) (st storage, uuid uint64, err error) {
+func newStorage(cfg config) (st storage, uuid uint64, err error) {
 	st = newInMemStorage()
 
 	if cfg.storagePath != "" {

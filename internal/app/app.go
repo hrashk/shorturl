@@ -19,7 +19,7 @@ func NewServer(modifiers ...CfgModifier) (*http.Server, error) {
 	return &http.Server{Addr: cfg.serverAddress, Handler: h}, nil
 }
 
-func newHandler(cfg *config) (http.Handler, error) {
+func newHandler(cfg config) (http.Handler, error) {
 	s, err := newService(cfg)
 	if err != nil {
 		return nil, err

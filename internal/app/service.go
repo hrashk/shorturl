@@ -13,7 +13,7 @@ type shortURLService struct {
 	baseURL      string
 }
 
-func newService(cfg *config) (s service, err error) {
+func newService(cfg config) (s service, err error) {
 	st, uuid, err := newStorage(cfg)
 	kg := newBase62Generator(uuid + 1)
 	s = &shortURLService{kg, st, cfg.baseURL}

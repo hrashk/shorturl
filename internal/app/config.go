@@ -19,16 +19,16 @@ type config struct {
 	storagePath   string
 }
 
-func newConfig(modifiers ...CfgModifier) (*config, error) {
-	cfg := &config{
+func newConfig(modifiers ...CfgModifier) (config, error) {
+	cfg := config{
 		serverAddress: DefaultServerAddress,
 		baseURL:       DefaultBaseURL,
 		storagePath:   DefaultStoragePath,
 	}
 
 	for _, m := range modifiers {
-		if err := m(cfg); err != nil {
-			return nil, err
+		if err := m(&cfg); err != nil {
+			return cfg, err
 		}
 	}
 
