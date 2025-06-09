@@ -135,10 +135,27 @@ func (ms *MainSuite) TestCommandArgs() {
 	const baseURL = "http://example.com:1024"
 	os.Args = []string{"", "-a", addr, "-b", baseURL, "-f", storagePath}
 
+	ms.checkNonDefaultConfig(addr, baseURL)
+}
+
+func (ms *MainSuite) TestEnvVars() {
+	const addr = "localhost:8088"
+	const baseURL = "http://example.com:1024"
+	os.Setenv("SERVER_ADDRESS", addr)
+	os.Setenv("BASE_URL", baseURL)
+	os.Setenv("FILE_STORAGE_PATH", storagePath)
+
+	ms.checkNonDefaultConfig(addr, baseURL)
+}
+
+func (ms *MainSuite) checkNonDefaultConfig(addr string, baseURL string) {
 	ms.startServer()
 
 	ms.Equal(addr, ms.server.Addr)
 	key := ms.shorten(sampleURL, baseURL)
+
+	ms.FileExists(storagePath)
+	ms.NoFileExists(app.DefaultStoragePath)
 
 	ms.server.Close()
 	ms.startServer()
@@ -148,18 +165,6 @@ func (ms *MainSuite) TestCommandArgs() {
 
 	key2 := ms.shorten(anotherURL, baseURL)
 	ms.NotEqual(key, key2, "duplicate key")
-}
-
-func (ms *MainSuite) TestEnvVars() {
-	const addr = "localhost:8088"
-	const baseURL = "http://example.com:1024"
-	os.Setenv("SERVER_ADDRESS", addr)
-	os.Setenv("BASE_URL", baseURL)
-
-	ms.startServer()
-
-	ms.Equal(addr, ms.server.Addr)
-	ms.shorten(sampleURL, baseURL)
 }
 
 func (ms *MainSuite) TestHelp() {
