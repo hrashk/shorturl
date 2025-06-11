@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"time"
 )
 
 type storage interface {
@@ -77,20 +76,16 @@ func newFileStorage(st storage, cfg config) (fileStorage, error) {
 }
 
 func (fs fileStorage) storeRec(file *os.File) {
-	ticker := time.NewTicker(100 * time.Millisecond)
 	encoder := json.NewEncoder(file)
 
 	for {
-		select {
-		case rec := <-fs.ch:
-			err := encoder.Encode(&rec)
-			if err != nil {
-				fs.log.Error(err, "writing record %v to file %s", rec, file.Name())
-			}
-		case <-ticker.C:
-			if err := file.Sync(); err != nil {
-				fs.log.Error(err, "syncing file %s to disc", file.Name())
-			}
+		rec := <-fs.ch
+
+		if err := encoder.Encode(&rec); err != nil {
+			fs.log.Error(err, "writing record %v to file %s", rec, file.Name())
+		}
+		if err := file.Sync(); err != nil {
+			fs.log.Error(err, "syncing file %s to disc", file.Name())
 		}
 	}
 }
