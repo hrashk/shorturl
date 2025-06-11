@@ -127,7 +127,7 @@ func (as *AdapterSuite) Info(msg string, v ...any) {
 	as.T().Logf(msg, v...)
 }
 
-func (as *AdapterSuite) Error(msg string, err error, v ...any) {
+func (as *AdapterSuite) Error(err error, msg string, v ...any) {
 	as.T().Logf(msg+": error "+err.Error(), v...)
 }
 

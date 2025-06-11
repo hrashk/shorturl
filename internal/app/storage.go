@@ -85,11 +85,11 @@ func (fs fileStorage) storeRec(file *os.File) {
 		case rec := <-fs.ch:
 			err := encoder.Encode(&rec)
 			if err != nil {
-				fs.log.Error("writing record %v to file %s", err, rec, file.Name())
+				fs.log.Error(err, "writing record %v to file %s", rec, file.Name())
 			}
 		case <-ticker.C:
 			if err := file.Sync(); err != nil {
-				fs.log.Error("syncing file to disc", err)
+				fs.log.Error(err, "syncing file %s to disc", file.Name())
 			}
 		}
 	}

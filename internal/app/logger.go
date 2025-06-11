@@ -10,7 +10,7 @@ import (
 
 type logger interface {
 	Info(msg string, v ...any)
-	Error(msg string, err error, v ...any)
+	Error(err error, msg string, v ...any)
 }
 
 type zeroLogger struct {
@@ -27,7 +27,7 @@ func (zl zeroLogger) Info(msg string, v ...any) {
 	zl.logger.Info().Msgf(msg, v...)
 }
 
-func (zl zeroLogger) Error(msg string, err error, v ...any) {
+func (zl zeroLogger) Error(err error, msg string, v ...any) {
 	zl.logger.Err(err).Msgf(msg, v...)
 }
 
