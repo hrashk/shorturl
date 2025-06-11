@@ -1,10 +1,10 @@
 package app
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"sync"
@@ -114,20 +114,18 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	decoder := json.NewDecoder(file)
+	rec := urlRec{}
+	if err = decoder.Decode(&rec); err != nil && err != io.EOF {
+		err = fmt.Errorf("failed to decode record at offset %d: %w", decoder.InputOffset(), err)
+		return
+	}
 
-	for scanner.Scan() {
-		bytes := scanner.Bytes()
-
-		rec := urlRec{}
-		if err = json.Unmarshal(bytes, &rec); err != nil {
-			err = fmt.Errorf("failed to parse %s: %w", string(bytes), err)
-			return
-		}
-
-		id, e := strconv.ParseUint(rec.UUID, 10, 64)
-		if e != nil {
-			err = fmt.Errorf("failed to convert %s to int: %w", rec.UUID, e)
+	for err == nil {
+		var id uint64
+		id, err = strconv.ParseUint(rec.UUID, 10, 64)
+		if err != nil {
+			err = fmt.Errorf("failed to convert %s to int: %w", rec.UUID, err)
 			return
 		}
 		if err = st.Store(shortKey{id, rec.ShortURL}, rec.OriginalURL); err != nil {
@@ -137,7 +135,15 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 		if id > uuid {
 			uuid = id
 		}
+
+		rec = urlRec{}
+		if err = decoder.Decode(&rec); err != nil && err != io.EOF {
+			err = fmt.Errorf("failed to decode record at offset %d: %w", decoder.InputOffset(), err)
+			return
+		}
 	}
-	err = scanner.Err()
+	if err == io.EOF {
+		err = nil
+	}
 	return
 }
