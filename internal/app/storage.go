@@ -115,13 +115,18 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
-	rec := urlRec{}
-	if err = decoder.Decode(&rec); err != nil && err != io.EOF {
-		err = fmt.Errorf("failed to decode record at offset %d: %w", decoder.InputOffset(), err)
-		return
-	}
+	for {
+		rec := urlRec{}
+		err = decoder.Decode(&rec)
 
-	for err == nil {
+		if err == io.EOF {
+			err = nil
+			break
+		} else if err != nil {
+			err = fmt.Errorf("failed to decode record at offset %d: %w", decoder.InputOffset(), err)
+			return
+		}
+
 		var id uint64
 		id, err = strconv.ParseUint(rec.UUID, 10, 64)
 		if err != nil {
@@ -135,15 +140,6 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 		if id > uuid {
 			uuid = id
 		}
-
-		rec = urlRec{}
-		if err = decoder.Decode(&rec); err != nil && err != io.EOF {
-			err = fmt.Errorf("failed to decode record at offset %d: %w", decoder.InputOffset(), err)
-			return
-		}
-	}
-	if err == io.EOF {
-		err = nil
 	}
 	return
 }
