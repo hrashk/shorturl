@@ -15,8 +15,10 @@ type shortURLService struct {
 
 func newService(cfg config) (s service, err error) {
 	st, uuid, err := newStorage(cfg)
-	kg := newBase62Generator(uuid + 1)
-	s = &shortURLService{kg, st, cfg.baseURL}
+	if err == nil {
+		kg := newBase62Generator(uuid + 1)
+		s = &shortURLService{kg, st, cfg.baseURL}
+	}
 
 	return
 }
