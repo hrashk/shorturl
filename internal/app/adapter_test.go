@@ -26,10 +26,10 @@ func (as *AdapterSuite) SetupTest() {
 	cfg, err := newConfig(Logger(as), StoragePath(""))
 	as.Require().NoError(err)
 
-	h, err := newHandler(cfg)
+	a, err := newAdapter(cfg)
 	as.Require().NoError(err)
 
-	as.srv = httptest.NewServer(h)
+	as.srv = httptest.NewServer(a.handler())
 	as.srv.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}

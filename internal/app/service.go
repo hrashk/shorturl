@@ -17,7 +17,7 @@ func newService(cfg config) (s service, err error) {
 	st, uuid, err := newStorage(cfg)
 	if err == nil {
 		kg := newBase62Generator(uuid + 1)
-		s = &shortURLService{kg, st, cfg.baseURL}
+		s = shortURLService{kg, st, cfg.baseURL}
 	}
 
 	return

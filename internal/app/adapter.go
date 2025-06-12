@@ -5,10 +5,35 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type adapter struct {
 	Service service
+	log     logger
+}
+
+func newAdapter(cfg config) (adapter, error) {
+	s, err := newService(cfg)
+
+	return adapter{s, cfg.log}, err
+}
+
+func (a adapter) handler() http.Handler {
+	r := chi.NewRouter()
+	r.Use(loggingMiddleware(a.log))
+	r.Use(newGzipDeflator())
+	r.Use(newGzipInflator())
+
+	r.Get("/{key}", a.RedirectToOriginalURL)
+	r.Post("/", a.CreateShortURL)
+	r.Post("/api/shorten", a.ShortenAPI)
+	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Operation is not supported", http.StatusBadRequest)
+	})
+
+	return r
 }
 
 func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
