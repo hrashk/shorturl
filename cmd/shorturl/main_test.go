@@ -331,17 +331,20 @@ func (ms *MainSuite) waitForPort() {
 	const pollInterval = 50 * time.Millisecond
 	addr := ms.server.Addr
 
-	start := time.Now()
+	var timer = time.NewTimer(timeout)
+	var ticker = time.NewTicker(pollInterval)
+
 	for {
-		conn, err := net.DialTimeout("tcp", addr, timeout)
-		if err == nil {
-			conn.Close()
-			return // Port is open
-		}
-		if time.Since(start) > timeout {
+		select {
+		case <-timer.C:
 			ms.Require().Fail("timed out connecting to " + addr)
 			return
+		case <-ticker.C:
+			conn, err := net.DialTimeout("tcp", addr, timeout)
+			if err == nil {
+				conn.Close() // the port is open
+				return
+			}
 		}
-		time.Sleep(pollInterval)
 	}
 }
