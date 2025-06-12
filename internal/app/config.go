@@ -41,7 +41,7 @@ func newConfig(modifiers ...Configurator) (config, error) {
 
 type Configurator func(*config) error
 
-func ServerAddress(addr string) Configurator {
+func WithServerAddress(addr string) Configurator {
 	return func(cfg *config) error {
 		_, port, err := net.SplitHostPort(addr)
 		if err != nil || port == "" {
@@ -52,7 +52,7 @@ func ServerAddress(addr string) Configurator {
 	}
 }
 
-func BaseURL(baseURL string) Configurator {
+func WithBaseURL(baseURL string) Configurator {
 	return func(cfg *config) error {
 		u, err := url.Parse(baseURL)
 		if err != nil || u.Scheme == "" || u.Host == "" {
@@ -63,16 +63,23 @@ func BaseURL(baseURL string) Configurator {
 	}
 }
 
-func Logger(log logger) Configurator {
+func WithLogger(log logger) Configurator {
 	return func(cfg *config) error {
 		cfg.log = log
 		return nil
 	}
 }
 
-func StoragePath(path string) Configurator {
+func WithStoragePath(path string) Configurator {
 	return func(cfg *config) error {
 		cfg.storagePath = path
+		return nil
+	}
+}
+
+func WithMemoryStorage() Configurator {
+	return func(cfg *config) error {
+		cfg.storagePath = ""
 		return nil
 	}
 }

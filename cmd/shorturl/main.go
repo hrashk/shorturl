@@ -72,9 +72,9 @@ func readConfig() ([]app.Configurator, error) {
 	filePath := argOrEnv(argFilePath, fileStoragePathEnv)
 
 	return []app.Configurator{
-		app.ServerAddress(addr),
-		app.BaseURL(baseURL),
-		app.StoragePath(filePath),
+		app.WithServerAddress(addr),
+		app.WithBaseURL(baseURL),
+		app.WithStoragePath(filePath),
 	}, nil
 }
 

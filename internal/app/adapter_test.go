@@ -23,7 +23,7 @@ func TestControllerSuite(t *testing.T) {
 }
 
 func (as *AdapterSuite) SetupTest() {
-	cfg, err := newConfig(Logger(as), StoragePath(""))
+	cfg, err := newConfig(WithLogger(as), WithMemoryStorage())
 	as.Require().NoError(err)
 
 	a, err := newAdapter(cfg)
