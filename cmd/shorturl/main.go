@@ -19,7 +19,7 @@ const (
 func main() {
 	_, ch := startServer()
 
-	if err := <-ch; err != nil {
+	if err := <-ch; err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }

@@ -32,12 +32,30 @@ const (
 
 type MainSuite struct {
 	suite.Suite
-	origArgs []string
-	server   *http.Server
+	origArgs      []string
+	server        *http.Server
+	origNewServer func(modifiers ...app.Configurator) (*http.Server, error)
 }
 
 func TestMainSuite(t *testing.T) {
 	suite.Run(t, &MainSuite{})
+}
+
+func (ms *MainSuite) SetupSuite() {
+	ms.origArgs = os.Args
+	ms.origNewServer = app.NewServer
+	app.NewServer = ms.newServerSpy
+
+	http.DefaultClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+}
+
+func (ms *MainSuite) newServerSpy(modifiers ...app.Configurator) (*http.Server, error) {
+	srv, err := ms.origNewServer(modifiers...)
+	ms.server = srv
+
+	return srv, err
 }
 
 func (ms *MainSuite) SetupTest() {
@@ -57,12 +75,6 @@ func (ms *MainSuite) TearDownSubTest() {
 }
 
 func (ms *MainSuite) setUp() {
-	ms.origArgs = os.Args
-
-	http.DefaultClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
 	ms.deleteFile(app.DefaultStoragePath)
 	ms.deleteFile(samplePath)
 
@@ -83,8 +95,13 @@ func (ms *MainSuite) tearDown() {
 	os.Unsetenv(baseURLEnv)
 	os.Unsetenv(fileStoragePathEnv)
 
+	ms.stopServer()
+}
+
+func (ms *MainSuite) stopServer() {
 	if ms.server != nil {
 		ms.server.Close()
+		ms.server = nil
 	}
 }
 
@@ -196,7 +213,7 @@ func (ms *MainSuite) checkURLNotKeptAfterRestart() {
 	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
 	key := ms.shorten(sampleURL, app.DefaultBaseURL)
 
-	ms.server.Close()
+	ms.stopServer()
 	ms.NoFileExists(app.DefaultStoragePath)
 
 	ms.startServer()
@@ -228,7 +245,7 @@ func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath stri
 	ms.Equal(addr, ms.server.Addr)
 	key := ms.shorten(sampleURL, baseURL)
 
-	ms.server.Close()
+	ms.stopServer()
 	ms.FileExists(filePath)
 
 	ms.startServer()
@@ -320,8 +337,7 @@ func (ms *MainSuite) serverAddress() string {
 }
 
 func (ms *MainSuite) startServer() {
-	ms.server, _ = startServer()
-	ms.Require().NotNil(ms.server, "failed to start server")
+	go main()
 
 	ms.waitForPort()
 }
@@ -329,7 +345,6 @@ func (ms *MainSuite) startServer() {
 func (ms *MainSuite) waitForPort() {
 	const timeout = time.Second
 	const pollInterval = 50 * time.Millisecond
-	addr := ms.server.Addr
 
 	var timer = time.NewTimer(timeout)
 	var ticker = time.NewTicker(pollInterval)
@@ -337,10 +352,13 @@ func (ms *MainSuite) waitForPort() {
 	for {
 		select {
 		case <-timer.C:
-			ms.Require().Fail("timed out connecting to " + addr)
+			ms.Require().Fail("timed out connecting to server")
 			return
 		case <-ticker.C:
-			conn, err := net.DialTimeout("tcp", addr, timeout)
+			if ms.server == nil {
+				continue
+			}
+			conn, err := net.DialTimeout("tcp", ms.server.Addr, timeout)
 			if err == nil {
 				conn.Close() // the port is open
 				return
