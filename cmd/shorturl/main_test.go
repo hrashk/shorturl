@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hrashk/shorturl/internal/app"
 	"github.com/stretchr/testify/suite"
@@ -32,9 +30,8 @@ const (
 
 type MainSuite struct {
 	suite.Suite
-	origArgs      []string
-	server        *http.Server
-	origNewServer func(modifiers ...app.Configurator) (*http.Server, error)
+	origArgs []string
+	server   *mainServer
 }
 
 func TestMainSuite(t *testing.T) {
@@ -43,19 +40,11 @@ func TestMainSuite(t *testing.T) {
 
 func (ms *MainSuite) SetupSuite() {
 	ms.origArgs = os.Args
-	ms.origNewServer = app.NewServer
-	app.NewServer = ms.newServerSpy
+	ms.server = newServer(&ms.Suite)
 
 	http.DefaultClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
-}
-
-func (ms *MainSuite) newServerSpy(modifiers ...app.Configurator) (*http.Server, error) {
-	srv, err := ms.origNewServer(modifiers...)
-	ms.server = srv
-
-	return srv, err
 }
 
 func (ms *MainSuite) SetupTest() {
@@ -95,14 +84,7 @@ func (ms *MainSuite) tearDown() {
 	os.Unsetenv(baseURLEnv)
 	os.Unsetenv(fileStoragePathEnv)
 
-	ms.stopServer()
-}
-
-func (ms *MainSuite) stopServer() {
-	if ms.server != nil {
-		ms.server.Close()
-		ms.server = nil
-	}
+	ms.server.stop()
 }
 
 func (ms *MainSuite) TestServerAddress() {
@@ -124,9 +106,9 @@ func (ms *MainSuite) TestServerAddress() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-a", t.arg)
 			}
-			ms.startServer()
+			ms.server.start()
 
-			ms.Equal(t.expected, ms.server.Addr)
+			ms.Equal(t.expected, ms.server.addr())
 			ms.shorten(sampleURL, app.DefaultBaseURL)
 		})
 	}
@@ -151,9 +133,9 @@ func (ms *MainSuite) TestBaseURL() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-b", t.arg)
 			}
-			ms.startServer()
+			ms.server.start()
 
-			ms.Equal(app.DefaultServerAddress, ms.server.Addr)
+			ms.Equal(app.DefaultServerAddress, ms.server.addr())
 			ms.shorten(sampleURL, t.expected)
 		})
 	}
@@ -208,15 +190,15 @@ func (ms *MainSuite) TestInMemStorage() {
 }
 
 func (ms *MainSuite) checkURLNotKeptAfterRestart() {
-	ms.startServer()
+	ms.server.start()
 
-	ms.Equal(app.DefaultServerAddress, ms.server.Addr)
+	ms.Equal(app.DefaultServerAddress, ms.server.addr())
 	key := ms.shorten(sampleURL, app.DefaultBaseURL)
 
-	ms.stopServer()
+	ms.server.stop()
 	ms.NoFileExists(app.DefaultStoragePath)
 
-	ms.startServer()
+	ms.server.start()
 
 	resp, _ := ms.httpGet("/" + key)
 	defer resp.Body.Close()
@@ -240,15 +222,15 @@ func (ms *MainSuite) TestEnvVars() {
 }
 
 func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath string) {
-	ms.startServer()
+	ms.server.start()
 
-	ms.Equal(addr, ms.server.Addr)
+	ms.Equal(addr, ms.server.addr())
 	key := ms.shorten(sampleURL, baseURL)
 
-	ms.stopServer()
+	ms.server.stop()
 	ms.FileExists(filePath)
 
-	ms.startServer()
+	ms.server.start()
 
 	url := ms.lookUp(key)
 	ms.Equal(sampleURL, url)
@@ -260,9 +242,9 @@ func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath stri
 func (ms *MainSuite) TestHelp() {
 	os.Args = append(os.Args, "-h")
 
-	srv, _ := startServer()
+	main()
 
-	ms.Nil(srv)
+	ms.Nil(ms.server.server)
 }
 
 func (ms *MainSuite) shorten(url, baseURL string) string {
@@ -300,7 +282,7 @@ func (ms *MainSuite) readBody(body io.ReadCloser) string {
 }
 
 func (ms *MainSuite) post(contentType string, body string) *http.Response {
-	resp, err := http.Post(ms.serverAddress(), contentType, strings.NewReader(body))
+	resp, err := http.Post(ms.server.baseURL, contentType, strings.NewReader(body))
 	ms.Require().NoError(err, "Failed to POST")
 
 	return resp
@@ -319,50 +301,9 @@ func (ms *MainSuite) lookUp(shortURL string) string {
 }
 
 func (ms *MainSuite) httpGet(query string) (*http.Response, string) {
-	resp, err := http.Get(ms.serverAddress() + query)
+	resp, err := http.Get(ms.server.baseURL + query)
 	ms.Require().NoError(err, "Failed to make request")
 	body := ms.readBody(resp.Body)
 
 	return resp, body
-}
-
-func (ms *MainSuite) serverAddress() string {
-	if ms.server.Addr[0] == ':' {
-		return "http://localhost" + ms.server.Addr
-	} else if !strings.Contains(ms.server.Addr, "://") {
-		return "http://" + ms.server.Addr
-	} else {
-		return ms.server.Addr
-	}
-}
-
-func (ms *MainSuite) startServer() {
-	go main()
-
-	ms.waitForPort()
-}
-
-func (ms *MainSuite) waitForPort() {
-	const timeout = time.Second
-	const pollInterval = 50 * time.Millisecond
-
-	var timer = time.NewTimer(timeout)
-	var ticker = time.NewTicker(pollInterval)
-
-	for {
-		select {
-		case <-timer.C:
-			ms.Require().Fail("timed out connecting to server")
-			return
-		case <-ticker.C:
-			if ms.server == nil {
-				continue
-			}
-			conn, err := net.DialTimeout("tcp", ms.server.Addr, timeout)
-			if err == nil {
-				conn.Close() // the port is open
-				return
-			}
-		}
-	}
 }
