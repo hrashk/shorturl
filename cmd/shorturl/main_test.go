@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/hrashk/shorturl/internal/app"
@@ -32,6 +30,7 @@ type MainSuite struct {
 	suite.Suite
 	origArgs []string
 	server   *mainServer
+	c        app.Client
 }
 
 func TestMainSuite(t *testing.T) {
@@ -41,10 +40,7 @@ func TestMainSuite(t *testing.T) {
 func (ms *MainSuite) SetupSuite() {
 	ms.origArgs = os.Args
 	ms.server = newServer(&ms.Suite)
-
-	http.DefaultClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
+	ms.c = app.NewClient(&ms.Suite)
 }
 
 func (ms *MainSuite) SetupTest() {
@@ -88,6 +84,11 @@ func (ms *MainSuite) tearDown() {
 	ms.server.stop()
 }
 
+func (ms *MainSuite) startServer() {
+	ms.server.start()
+	ms.c.BaseURL = ms.server.baseURL
+}
+
 func (ms *MainSuite) TestServerAddress() {
 	tests := []struct {
 		env, arg, expected string
@@ -107,10 +108,10 @@ func (ms *MainSuite) TestServerAddress() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-a", t.arg)
 			}
-			ms.server.start()
+			ms.startServer()
 
 			ms.Equal(t.expected, ms.server.addr())
-			ms.shorten(sampleURL, app.DefaultBaseURL)
+			ms.c.Shorten(sampleURL, app.DefaultBaseURL)
 		})
 	}
 }
@@ -134,10 +135,10 @@ func (ms *MainSuite) TestBaseURL() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-b", t.arg)
 			}
-			ms.server.start()
+			ms.startServer()
 
 			ms.Equal(app.DefaultServerAddress, ms.server.addr())
-			ms.shorten(sampleURL, t.expected)
+			ms.c.Shorten(sampleURL, t.expected)
 		})
 	}
 }
@@ -191,17 +192,17 @@ func (ms *MainSuite) TestInMemStorage() {
 }
 
 func (ms *MainSuite) checkURLNotKeptAfterRestart() {
-	ms.server.start()
+	ms.startServer()
 
 	ms.Equal(app.DefaultServerAddress, ms.server.addr())
-	key := ms.shorten(sampleURL, app.DefaultBaseURL)
+	key := ms.c.Shorten(sampleURL, app.DefaultBaseURL)
 
 	ms.server.stop()
 	ms.NoFileExists(app.DefaultStoragePath)
 
-	ms.server.start()
+	ms.startServer()
 
-	resp, _ := ms.httpGet("/" + key)
+	resp := ms.c.GET("/" + key)
 	defer resp.Body.Close()
 	ms.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
 }
@@ -223,20 +224,20 @@ func (ms *MainSuite) TestEnvVars() {
 }
 
 func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath string) {
-	ms.server.start()
+	ms.startServer()
 
 	ms.Equal(addr, ms.server.addr())
-	key := ms.shorten(sampleURL, baseURL)
+	key := ms.c.Shorten(sampleURL, baseURL)
 
 	ms.server.stop()
 	ms.FileExists(filePath)
 
-	ms.server.start()
+	ms.startServer()
 
-	url := ms.lookUp(key)
+	url := ms.c.LookUp(key)
 	ms.Equal(sampleURL, url)
 
-	key2 := ms.shorten(anotherURL, baseURL)
+	key2 := ms.c.Shorten(anotherURL, baseURL)
 	ms.NotEqual(key, key2, "duplicate key")
 }
 
@@ -246,65 +247,4 @@ func (ms *MainSuite) TestHelp() {
 	main()
 
 	ms.Nil(ms.server.server)
-}
-
-func (ms *MainSuite) shorten(url, baseURL string) string {
-	body := ms.callShortener(url)
-
-	return ms.extractKey(baseURL, body)
-}
-
-func (ms *MainSuite) extractKey(baseURL string, body string) string {
-	ms.Regexp("^"+baseURL, body, "Redirect URL")
-
-	idx := strings.LastIndex(body, "/")
-	key := body[idx+1:]
-	ms.GreaterOrEqual(len(key), 6, "Expected key length to be at least 6")
-
-	return key
-}
-
-func (ms *MainSuite) callShortener(url string) string {
-	resp := ms.post("text/plain", url)
-	defer resp.Body.Close()
-
-	ms.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
-
-	return ms.readBody(resp.Body)
-}
-
-func (ms *MainSuite) readBody(body io.ReadCloser) string {
-	defer body.Close()
-
-	bytes, err := io.ReadAll(body)
-	ms.Require().NoError(err, "Failed to read response body")
-
-	return string(bytes)
-}
-
-func (ms *MainSuite) post(contentType string, body string) *http.Response {
-	resp, err := http.Post(ms.server.baseURL, contentType, strings.NewReader(body))
-	ms.Require().NoError(err, "Failed to POST")
-
-	return resp
-}
-
-func (ms *MainSuite) lookUp(shortURL string) string {
-	resp, _ := ms.httpGet("/" + shortURL)
-	defer resp.Body.Close()
-
-	ms.Equal(http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
-
-	loc := resp.Header.Get("Location")
-	ms.NotEmpty(loc, "Expected Location header to be set")
-
-	return loc
-}
-
-func (ms *MainSuite) httpGet(query string) (*http.Response, string) {
-	resp, err := http.Get(ms.server.baseURL + query)
-	ms.Require().NoError(err, "Failed to make request")
-	body := ms.readBody(resp.Body)
-
-	return resp, body
 }
