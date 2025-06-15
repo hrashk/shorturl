@@ -80,9 +80,9 @@ func (ms *MainSuite) deleteFile(path string) {
 func (ms *MainSuite) tearDown() {
 	os.Args = ms.origArgs
 
-	os.Unsetenv(serverAddressEnv)
-	os.Unsetenv(baseURLEnv)
-	os.Unsetenv(fileStoragePathEnv)
+	os.Unsetenv(addrSetting.envName)
+	os.Unsetenv(baseURLSetting.envName)
+	os.Unsetenv(storagePathSetting.envName)
 
 	ms.server.stop()
 }
@@ -101,7 +101,7 @@ func (ms *MainSuite) TestServerAddress() {
 		name := fmt.Sprintf("server address %d", i+1)
 		ms.Run(name, func() {
 			if t.env != skip {
-				os.Setenv(serverAddressEnv, t.env)
+				os.Setenv(addrSetting.envName, t.env)
 			}
 			if t.arg != skip {
 				os.Args = append(os.Args, "-a", t.arg)
@@ -128,7 +128,7 @@ func (ms *MainSuite) TestBaseURL() {
 		name := fmt.Sprintf("base URL %d", i+1)
 		ms.Run(name, func() {
 			if t.env != skip {
-				os.Setenv(baseURLEnv, t.env)
+				os.Setenv(baseURLSetting.envName, t.env)
 			}
 			if t.arg != skip {
 				os.Args = append(os.Args, "-b", t.arg)
@@ -155,7 +155,7 @@ func (ms *MainSuite) TestFileStoragePath() {
 		name := fmt.Sprintf("storage path %d", i+1)
 		ms.Run(name, func() {
 			if t.env != skip {
-				os.Setenv(fileStoragePathEnv, t.env)
+				os.Setenv(storagePathSetting.envName, t.env)
 			}
 			if t.arg != skip {
 				os.Args = append(os.Args, "-f", t.arg)
@@ -179,7 +179,7 @@ func (ms *MainSuite) TestInMemStorage() {
 		name := fmt.Sprintf("storage path %d", i+1)
 		ms.Run(name, func() {
 			if t.env != skip {
-				os.Setenv(fileStoragePathEnv, t.env)
+				os.Setenv(storagePathSetting.envName, t.env)
 			}
 			if t.arg != skip {
 				os.Args = append(os.Args, "-f", t.arg)
@@ -213,9 +213,9 @@ func (ms *MainSuite) TestCommandArgs() {
 }
 
 func (ms *MainSuite) TestEnvVars() {
-	os.Setenv(serverAddressEnv, sampleAddr)
-	os.Setenv(baseURLEnv, sampleBaseURL)
-	os.Setenv(fileStoragePathEnv, samplePath)
+	os.Setenv(addrSetting.envName, sampleAddr)
+	os.Setenv(baseURLSetting.envName, sampleBaseURL)
+	os.Setenv(storagePathSetting.envName, samplePath)
 
 	ms.checkFileStorage(sampleAddr, sampleBaseURL, samplePath)
 	ms.NoFileExists(app.DefaultStoragePath)
