@@ -66,6 +66,7 @@ func (ms *MainSuite) TearDownSubTest() {
 func (ms *MainSuite) setUp() {
 	ms.deleteFile(app.DefaultStoragePath)
 	ms.deleteFile(samplePath)
+	ms.deleteFile(anotherPath)
 
 	// avoid errors due to unknown flags from go test
 	os.Args = []string{os.Args[0]}
