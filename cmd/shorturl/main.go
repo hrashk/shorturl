@@ -8,36 +8,19 @@ import (
 )
 
 func main() {
-	_, ch := startServer()
+	mods, err := newSettings().parse()
+	if err != nil {
+		panic(err)
+	} else if mods == nil {
+		return
+	}
 
-	if err := <-ch; err != nil && !errors.Is(err, http.ErrServerClosed) {
+	server, err := app.NewServer(mods...)
+	if err != nil {
 		panic(err)
 	}
-}
 
-func startServer() (*http.Server, chan error) {
-	// do not block in case of error
-	ch := make(chan error, 1)
-
-	server, err := buildServer()
-	if err != nil || server == nil {
-		ch <- err
-		return nil, ch
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		panic(err)
 	}
-
-	go func() {
-		ch <- server.ListenAndServe()
-	}()
-
-	return server, ch
-}
-
-func buildServer() (*http.Server, error) {
-	mods, err := newSettings().parse()
-
-	if mods == nil {
-		return nil, err
-	}
-
-	return app.NewServer(mods...)
 }
