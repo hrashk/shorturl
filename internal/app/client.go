@@ -16,15 +16,15 @@ const ContentTypeJSON = "application/json"
 type Client struct {
 	BaseURL string
 	ss      *suite.Suite
-	client  *http.Client
+	hcl     *http.Client
 }
 
 func NewClient(ss *suite.Suite) Client {
 	c := Client{
-		ss:     ss,
-		client: &http.Client{},
+		ss:  ss,
+		hcl: &http.Client{},
 	}
-	c.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	c.hcl.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 	return c
@@ -63,7 +63,7 @@ func (c Client) readBody(body io.Reader) string {
 }
 
 func (c Client) POST(query string, contentType string, body string) *http.Response {
-	resp, err := c.client.Post(c.BaseURL+query, contentType, strings.NewReader(body))
+	resp, err := c.hcl.Post(c.BaseURL+query, contentType, strings.NewReader(body))
 	c.ss.Require().NoError(err, "Failed to POST")
 
 	return resp
@@ -78,7 +78,7 @@ func (c Client) PUT(query string, contentType string, body string) *http.Respons
 	c.ss.Require().NoError(err, "Failed to creae a PUT request")
 	req.Header.Set("Content-Type", contentType)
 
-	resp, err := c.client.Do(req)
+	resp, err := c.hcl.Do(req)
 	c.ss.Require().NoError(err, "Failed to PUT")
 
 	return resp
@@ -94,7 +94,7 @@ func (c Client) PostAcceptingGzip(query string, body string) *http.Response {
 	req.Header.Set("Content-Type", ContentTypeJSON)
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	resp, err := c.client.Do(req)
+	resp, err := c.hcl.Do(req)
 	c.ss.Require().NoError(err, "Failed to POST")
 
 	return resp
@@ -109,7 +109,7 @@ func (c Client) PostGzippedJSON(query string, body string) *http.Response {
 	req.Header.Set("Content-Type", ContentTypeJSON)
 	req.Header.Add("Content-Encoding", "gzip")
 
-	resp, err := c.client.Do(req)
+	resp, err := c.hcl.Do(req)
 	c.ss.Require().NoError(err, "Failed to POST")
 
 	return resp
@@ -128,7 +128,7 @@ func (c Client) LookUp(shortURL string) string {
 }
 
 func (c Client) GET(query string) *http.Response {
-	resp, err := c.client.Get(c.BaseURL + query)
+	resp, err := c.hcl.Get(c.BaseURL + query)
 	c.ss.Require().NoError(err, "Failed to make request")
 
 	return resp

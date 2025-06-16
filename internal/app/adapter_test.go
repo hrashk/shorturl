@@ -1,7 +1,6 @@
 package app
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +11,7 @@ import (
 type AdapterSuite struct {
 	suite.Suite
 	srv *httptest.Server
-	c   Client
+	cli Client
 }
 
 func TestControllerSuite(t *testing.T) {
@@ -27,8 +26,8 @@ func (as *AdapterSuite) SetupTest() {
 	as.Require().NoError(err)
 
 	as.srv = httptest.NewServer(a.handler())
-	as.c = NewClient(&as.Suite)
-	as.c.BaseURL = as.srv.URL
+	as.cli = NewClient(&as.Suite)
+	as.cli.BaseURL = as.srv.URL
 }
 
 func (as *AdapterSuite) TearDownTest() {
@@ -40,14 +39,14 @@ func (as *AdapterSuite) TearDownTest() {
 func (as *AdapterSuite) TestCreatingShortURL() {
 	const url = "https://pkg.go.dev/cmp"
 
-	key := as.c.Shorten(url, DefaultBaseURL)
-	lookupURL := as.c.LookUp(key)
+	key := as.cli.Shorten(url, DefaultBaseURL)
+	lookupURL := as.cli.LookUp(key)
 
 	as.Equal(url, lookupURL, "Expected the original URL to match the lookup URL")
 }
 
 func (as *AdapterSuite) TestInvalidRequest() {
-	resp := as.c.PutJSON("/somekey", "")
+	resp := as.cli.PutJSON("/somekey", "")
 	defer resp.Body.Close()
 
 	as.Equal(http.StatusBadRequest, resp.StatusCode, "Response status code")
@@ -57,16 +56,16 @@ func (as *AdapterSuite) TestDifferentKeys() {
 	const url = "https://pkg.go.dev/cmp"
 	const url2 = "https://pkg.go.dev/cmp/v2"
 
-	key := as.c.Shorten(url, DefaultBaseURL)
-	key2 := as.c.Shorten(url2, DefaultBaseURL)
+	key := as.cli.Shorten(url, DefaultBaseURL)
+	key2 := as.cli.Shorten(url2, DefaultBaseURL)
 	as.NotEqual(key, key2, "Expected different keys for different URLs")
 }
 
 func (as *AdapterSuite) TestShortenApi() {
-	resp := as.c.PostJSON("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
+	resp := as.cli.PostJSON("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
 	defer resp.Body.Close()
 
-	body := as.c.readBody(resp.Body)
+	body := as.cli.readBody(resp.Body)
 	as.Contains(body, DefaultBaseURL, "body")
 }
 
@@ -79,25 +78,22 @@ func (as *AdapterSuite) Error(err error, msg string, v ...any) {
 }
 
 func (as *AdapterSuite) TestReceivingGzip() {
-	resp := as.c.PostAcceptingGzip("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
+	resp := as.cli.PostAcceptingGzip("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
 	defer resp.Body.Close()
 
 	as.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
 	as.Equal("gzip", resp.Header.Get("Content-Encoding"), "Content encoding")
 
-	body := as.c.readBody(resp.Body)
+	body := as.cli.readBody(resp.Body)
 	as.Contains(body, DefaultBaseURL, "body")
 }
 
 func (as *AdapterSuite) TestSendingGzip() {
-	resp := as.c.PostGzippedJSON("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
+	resp := as.cli.PostGzippedJSON("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
 	defer resp.Body.Close()
 
 	as.Equal(http.StatusCreated, resp.StatusCode, "Response status code")
 
-	bytes, err := io.ReadAll(resp.Body)
-	as.Require().NoError(err, "Failed to read response body")
-
-	body := string(bytes)
+	body := as.cli.readBody(resp.Body)
 	as.Contains(body, DefaultBaseURL, "body")
 }
