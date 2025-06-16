@@ -26,6 +26,7 @@ func (a adapter) handler() http.Handler {
 	r.Use(newGzipDeflator())
 	r.Use(newGzipInflator())
 
+	r.Get("/ping", a.Ping)
 	r.Get("/{key}", a.RedirectToOriginalURL)
 	r.Post("/", a.CreateShortURL)
 	r.Post("/api/shorten", a.ShortenAPI)
@@ -98,4 +99,8 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("failed to write response: %v", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (a adapter) Ping(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "to be implemented", http.StatusInternalServerError)
 }

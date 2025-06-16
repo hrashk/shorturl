@@ -131,7 +131,7 @@ func (c Client) LookUpNotFound(shortURL string) {
 	resp := c.GET("/" + shortURL)
 	defer resp.Body.Close()
 
-	c.ss.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
+	c.ss.Equal(http.StatusNotFound, resp.StatusCode, "response status code")
 }
 
 func (c Client) GET(query string) *http.Response {
@@ -139,6 +139,13 @@ func (c Client) GET(query string) *http.Response {
 	c.ss.Require().NoError(err, "Failed to make request")
 
 	return resp
+}
+
+func (c Client) PingFailed() {
+	resp := c.GET("/ping")
+	defer resp.Body.Close()
+
+	c.ss.Equal(http.StatusInternalServerError, resp.StatusCode, "response status code")
 }
 
 func compress(data []byte) ([]byte, error) {
