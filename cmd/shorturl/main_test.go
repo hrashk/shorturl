@@ -160,7 +160,8 @@ func (ms *MainSuite) TestFileStoragePath() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-f", t.arg)
 			}
-			ms.checkFileStorage(app.DefaultServerAddress, app.DefaultBaseURL, t.expected)
+			ms.checkDataRestoredAfterRestart(app.DefaultServerAddress, app.DefaultBaseURL)
+			ms.FileExists(t.expected)
 		})
 	}
 }
@@ -184,29 +185,18 @@ func (ms *MainSuite) TestInMemStorage() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-f", t.arg)
 			}
-			ms.checkURLNotKeptAfterRestart()
+			ms.checkDataWipedAfterRestart()
+			ms.NoFileExists(app.DefaultStoragePath)
 		})
 	}
-}
-
-func (ms *MainSuite) checkURLNotKeptAfterRestart() {
-	ms.startServer(app.DefaultServerAddress)
-
-	key := ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
-
-	ms.srv.stop()
-	ms.NoFileExists(app.DefaultStoragePath)
-
-	ms.startServer(app.DefaultServerAddress)
-
-	ms.cli.LookUpNotFound(key)
 }
 
 func (ms *MainSuite) TestCommandArgs() {
 	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL, "-f", samplePath}
 
-	ms.checkFileStorage(sampleAddr, sampleBaseURL, samplePath)
+	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
+	ms.FileExists(samplePath)
 }
 
 func (ms *MainSuite) TestEnvVars() {
@@ -214,25 +204,9 @@ func (ms *MainSuite) TestEnvVars() {
 	os.Setenv(baseURLSetting.envName, sampleBaseURL)
 	os.Setenv(storagePathSetting.envName, samplePath)
 
-	ms.checkFileStorage(sampleAddr, sampleBaseURL, samplePath)
+	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
-}
-
-func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath string) {
-	ms.startServer(addr)
-
-	key := ms.cli.Shorten(sampleURL, baseURL)
-
-	ms.srv.stop()
-	ms.FileExists(filePath)
-
-	ms.startServer(addr)
-
-	url := ms.cli.LookUp(key)
-	ms.Equal(sampleURL, url)
-
-	key2 := ms.cli.Shorten(anotherURL, baseURL)
-	ms.NotEqual(key, key2, "duplicate key")
+	ms.FileExists(samplePath)
 }
 
 func (ms *MainSuite) TestHelp() {
@@ -241,4 +215,28 @@ func (ms *MainSuite) TestHelp() {
 	main()
 
 	ms.Nil(ms.srv.server)
+}
+
+func (ms *MainSuite) checkDataRestoredAfterRestart(addr, baseURL string) {
+	ms.startServer(addr)
+	key := ms.cli.Shorten(sampleURL, baseURL)
+
+	ms.srv.stop()
+
+	ms.startServer(addr)
+	url := ms.cli.LookUp(key)
+	ms.Equal(sampleURL, url)
+
+	key2 := ms.cli.Shorten(anotherURL, baseURL)
+	ms.NotEqual(key, key2, "duplicate key")
+}
+
+func (ms *MainSuite) checkDataWipedAfterRestart() {
+	ms.startServer(app.DefaultServerAddress)
+	key := ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
+
+	ms.srv.stop()
+
+	ms.startServer(app.DefaultServerAddress)
+	ms.cli.LookUpNotFound(key)
 }
