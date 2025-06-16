@@ -127,6 +127,13 @@ func (c Client) LookUp(shortURL string) string {
 	return loc
 }
 
+func (c Client) LookUpNotFound(shortURL string) {
+	resp := c.GET("/" + shortURL)
+	defer resp.Body.Close()
+
+	c.ss.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
+}
+
 func (c Client) GET(query string) *http.Response {
 	resp, err := c.hcl.Get(c.BaseURL + query)
 	c.ss.Require().NoError(err, "Failed to make request")

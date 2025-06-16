@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"testing"
 
@@ -202,9 +201,7 @@ func (ms *MainSuite) checkURLNotKeptAfterRestart() {
 
 	ms.startServer()
 
-	resp := ms.cli.GET("/" + key)
-	defer resp.Body.Close()
-	ms.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
+	ms.cli.LookUpNotFound(key)
 }
 
 func (ms *MainSuite) TestCommandArgs() {
