@@ -29,8 +29,8 @@ const (
 type MainSuite struct {
 	suite.Suite
 	origArgs []string
-	server   *mainServer
-	c        app.Client
+	srv      *mainServer
+	cli      app.Client
 }
 
 func TestMainSuite(t *testing.T) {
@@ -39,8 +39,8 @@ func TestMainSuite(t *testing.T) {
 
 func (ms *MainSuite) SetupSuite() {
 	ms.origArgs = os.Args
-	ms.server = newServer(&ms.Suite)
-	ms.c = app.NewClient(&ms.Suite)
+	ms.srv = newServer(&ms.Suite)
+	ms.cli = app.NewClient(&ms.Suite)
 }
 
 func (ms *MainSuite) SetupTest() {
@@ -81,12 +81,12 @@ func (ms *MainSuite) tearDown() {
 	os.Unsetenv(baseURLSetting.envName)
 	os.Unsetenv(storagePathSetting.envName)
 
-	ms.server.stop()
+	ms.srv.stop()
 }
 
 func (ms *MainSuite) startServer() {
-	ms.server.start()
-	ms.c.BaseURL = ms.server.baseURL
+	ms.srv.start()
+	ms.cli.BaseURL = ms.srv.baseURL
 }
 
 func (ms *MainSuite) TestServerAddress() {
@@ -110,8 +110,8 @@ func (ms *MainSuite) TestServerAddress() {
 			}
 			ms.startServer()
 
-			ms.Equal(t.expected, ms.server.addr())
-			ms.c.Shorten(sampleURL, app.DefaultBaseURL)
+			ms.Equal(t.expected, ms.srv.addr())
+			ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
 		})
 	}
 }
@@ -137,8 +137,8 @@ func (ms *MainSuite) TestBaseURL() {
 			}
 			ms.startServer()
 
-			ms.Equal(app.DefaultServerAddress, ms.server.addr())
-			ms.c.Shorten(sampleURL, t.expected)
+			ms.Equal(app.DefaultServerAddress, ms.srv.addr())
+			ms.cli.Shorten(sampleURL, t.expected)
 		})
 	}
 }
@@ -194,15 +194,15 @@ func (ms *MainSuite) TestInMemStorage() {
 func (ms *MainSuite) checkURLNotKeptAfterRestart() {
 	ms.startServer()
 
-	ms.Equal(app.DefaultServerAddress, ms.server.addr())
-	key := ms.c.Shorten(sampleURL, app.DefaultBaseURL)
+	ms.Equal(app.DefaultServerAddress, ms.srv.addr())
+	key := ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
 
-	ms.server.stop()
+	ms.srv.stop()
 	ms.NoFileExists(app.DefaultStoragePath)
 
 	ms.startServer()
 
-	resp := ms.c.GET("/" + key)
+	resp := ms.cli.GET("/" + key)
 	defer resp.Body.Close()
 	ms.Equal(http.StatusNotFound, resp.StatusCode, "Response status code")
 }
@@ -226,18 +226,18 @@ func (ms *MainSuite) TestEnvVars() {
 func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath string) {
 	ms.startServer()
 
-	ms.Equal(addr, ms.server.addr())
-	key := ms.c.Shorten(sampleURL, baseURL)
+	ms.Equal(addr, ms.srv.addr())
+	key := ms.cli.Shorten(sampleURL, baseURL)
 
-	ms.server.stop()
+	ms.srv.stop()
 	ms.FileExists(filePath)
 
 	ms.startServer()
 
-	url := ms.c.LookUp(key)
+	url := ms.cli.LookUp(key)
 	ms.Equal(sampleURL, url)
 
-	key2 := ms.c.Shorten(anotherURL, baseURL)
+	key2 := ms.cli.Shorten(anotherURL, baseURL)
 	ms.NotEqual(key, key2, "duplicate key")
 }
 
@@ -246,5 +246,5 @@ func (ms *MainSuite) TestHelp() {
 
 	main()
 
-	ms.Nil(ms.server.server)
+	ms.Nil(ms.srv.server)
 }
