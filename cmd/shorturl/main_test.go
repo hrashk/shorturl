@@ -83,9 +83,10 @@ func (ms *MainSuite) tearDown() {
 	ms.srv.stop()
 }
 
-func (ms *MainSuite) startServer() {
+func (ms *MainSuite) startServer(expectedAddr string) {
 	ms.srv.start()
 	ms.cli.BaseURL = ms.srv.baseURL
+	ms.Equal(expectedAddr, ms.srv.addr())
 }
 
 func (ms *MainSuite) TestServerAddress() {
@@ -107,9 +108,8 @@ func (ms *MainSuite) TestServerAddress() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-a", t.arg)
 			}
-			ms.startServer()
+			ms.startServer(t.expected)
 
-			ms.Equal(t.expected, ms.srv.addr())
 			ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
 		})
 	}
@@ -134,9 +134,8 @@ func (ms *MainSuite) TestBaseURL() {
 			if t.arg != skip {
 				os.Args = append(os.Args, "-b", t.arg)
 			}
-			ms.startServer()
+			ms.startServer(app.DefaultServerAddress)
 
-			ms.Equal(app.DefaultServerAddress, ms.srv.addr())
 			ms.cli.Shorten(sampleURL, t.expected)
 		})
 	}
@@ -191,15 +190,14 @@ func (ms *MainSuite) TestInMemStorage() {
 }
 
 func (ms *MainSuite) checkURLNotKeptAfterRestart() {
-	ms.startServer()
+	ms.startServer(app.DefaultServerAddress)
 
-	ms.Equal(app.DefaultServerAddress, ms.srv.addr())
 	key := ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
 
 	ms.srv.stop()
 	ms.NoFileExists(app.DefaultStoragePath)
 
-	ms.startServer()
+	ms.startServer(app.DefaultServerAddress)
 
 	ms.cli.LookUpNotFound(key)
 }
@@ -221,15 +219,14 @@ func (ms *MainSuite) TestEnvVars() {
 }
 
 func (ms *MainSuite) checkFileStorage(addr string, baseURL string, filePath string) {
-	ms.startServer()
+	ms.startServer(addr)
 
-	ms.Equal(addr, ms.srv.addr())
 	key := ms.cli.Shorten(sampleURL, baseURL)
 
 	ms.srv.stop()
 	ms.FileExists(filePath)
 
-	ms.startServer()
+	ms.startServer(addr)
 
 	url := ms.cli.LookUp(key)
 	ms.Equal(sampleURL, url)
