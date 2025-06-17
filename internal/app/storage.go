@@ -28,7 +28,7 @@ type fileStorage struct {
 func newStorage(cfg config) (st storage, uuid uint64, err error) {
 	st = newInMemStorage()
 
-	if cfg.storagePath != "" {
+	if cfg.storagePath != "" && cfg.dbDsn == "" {
 		uuid, err = readFile(st, cfg.storagePath)
 		if err != nil {
 			return

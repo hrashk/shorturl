@@ -47,9 +47,9 @@ var storagePathSetting = setting{
 var dbSetting = setting{
 	name: "d",
 	usage: "database connection string. " +
-		"Empty value falls back to final storage. " +
+		"If omitted or empty, the server falls back to file storage logic. " +
 		"Related environment variable %s has higher priority.",
-	defValue: app.DefaultDatabaseDsn,
+	defValue: "",
 	envName:  "DATABASE_DSN",
 	cfg:      app.WithDatabaseDsn,
 }
