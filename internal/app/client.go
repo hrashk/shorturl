@@ -141,6 +141,13 @@ func (c Client) GET(query string) *http.Response {
 	return resp
 }
 
+func (c Client) Ping() {
+	resp := c.GET("/ping")
+	defer resp.Body.Close()
+
+	c.ss.Equal(http.StatusOK, resp.StatusCode, "response status code")
+}
+
 func (c Client) PingFailed() {
 	resp := c.GET("/ping")
 	defer resp.Body.Close()

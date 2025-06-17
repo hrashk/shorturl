@@ -44,6 +44,16 @@ var storagePathSetting = setting{
 	cfg:      app.WithStoragePath,
 }
 
+var dbSetting = setting{
+	name: "d",
+	usage: "database connection string. " +
+		"Empty value falls back to final storage. " +
+		"Related environment variable %s has higher priority.",
+	defValue: app.DefaultDatabaseDsn,
+	envName:  "DATABASE_DSN",
+	cfg:      app.WithDatabaseDsn,
+}
+
 type settings struct {
 	fs  *flag.FlagSet
 	all []*setting
@@ -52,7 +62,7 @@ type settings struct {
 func newSettings() settings {
 	ss := settings{
 		fs:  flag.NewFlagSet(os.Args[0], flag.ContinueOnError),
-		all: []*setting{&addrSetting, &baseURLSetting, &storagePathSetting},
+		all: []*setting{&addrSetting, &baseURLSetting, &storagePathSetting, &dbSetting},
 	}
 	ss.declareAll()
 

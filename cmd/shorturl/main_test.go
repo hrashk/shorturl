@@ -193,8 +193,8 @@ func (ms *MainSuite) TestInMemStorage() {
 	}
 }
 
-func (ms *MainSuite) TestCommandArgs() {
-	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL, "-f", samplePath}
+func (ms *MainSuite) TestCommandArgsWithFileStorage() {
+	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL, "-f", samplePath, "-d", ""}
 
 	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
@@ -202,15 +202,37 @@ func (ms *MainSuite) TestCommandArgs() {
 	ms.cli.PingFailed()
 }
 
-func (ms *MainSuite) TestEnvVars() {
+func (ms *MainSuite) TestCommandArgsWithDB() {
+	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL, "-f", samplePath, "-d", app.DefaultDatabaseDsn}
+
+	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
+	ms.NoFileExists(app.DefaultStoragePath)
+	ms.NoFileExists(samplePath)
+	ms.cli.Ping()
+}
+
+func (ms *MainSuite) TestEnvVarsWithFileStorage() {
 	os.Setenv(addrSetting.envName, sampleAddr)
 	os.Setenv(baseURLSetting.envName, sampleBaseURL)
 	os.Setenv(storagePathSetting.envName, samplePath)
+	os.Setenv(dbSetting.envName, "")
 
 	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
 	ms.FileExists(samplePath)
 	ms.cli.PingFailed()
+}
+
+func (ms *MainSuite) TestEnvVarsWithDB() {
+	os.Setenv(addrSetting.envName, sampleAddr)
+	os.Setenv(baseURLSetting.envName, sampleBaseURL)
+	os.Setenv(storagePathSetting.envName, samplePath)
+	os.Setenv(dbSetting.envName, app.DefaultDatabaseDsn)
+
+	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
+	ms.NoFileExists(app.DefaultStoragePath)
+	ms.NoFileExists(samplePath)
+	ms.cli.Ping()
 }
 
 func (ms *MainSuite) TestHelp() {

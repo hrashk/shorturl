@@ -10,6 +10,7 @@ const (
 	DefaultServerAddress = ":8080"
 	DefaultBaseURL       = "http://localhost:8080"
 	DefaultStoragePath   = "/tmp/short-url-db.json"
+	DefaultDatabaseDsn   = "postgresql://localhost:5432/shorturl"
 )
 
 type config struct {
@@ -17,6 +18,7 @@ type config struct {
 	baseURL       string
 	log           logger
 	storagePath   string
+	dbDsn         string
 }
 
 func newConfig(modifiers ...Configurator) (config, error) {
@@ -24,6 +26,7 @@ func newConfig(modifiers ...Configurator) (config, error) {
 		serverAddress: DefaultServerAddress,
 		baseURL:       DefaultBaseURL,
 		storagePath:   DefaultStoragePath,
+		dbDsn:         DefaultDatabaseDsn,
 	}
 
 	for _, m := range modifiers {
@@ -80,6 +83,13 @@ func WithStoragePath(path string) Configurator {
 func WithMemoryStorage() Configurator {
 	return func(cfg *config) error {
 		cfg.storagePath = ""
+		return nil
+	}
+}
+
+func WithDatabaseDsn(dsn string) Configurator {
+	return func(cfg *config) error {
+		cfg.dbDsn = dsn
 		return nil
 	}
 }
