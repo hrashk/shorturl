@@ -26,7 +26,6 @@ testlocal.sh
 vendor/
 
 # Go modules
-go.sum
 go.work
 go.work.sum
 
