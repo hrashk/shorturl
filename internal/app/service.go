@@ -12,7 +12,7 @@ import (
 type service interface {
 	CreateShortURL(url string) (shortURL string, err error)
 	LookUp(key string) (url string, err error)
-	PingDB() error
+	PingDB(ctx context.Context) error
 }
 
 type shortURLService struct {
@@ -37,7 +37,7 @@ func newService(cfg config) (s service, err error) {
 		if err != nil {
 			return
 		}
-		err = ping(db)
+		err = ping(db, context.Background())
 		if err != nil {
 			return
 		}
@@ -65,16 +65,16 @@ func (s shortURLService) LookUp(key string) (url string, err error) {
 	return url, nil
 }
 
-func (s shortURLService) PingDB() error {
+func (s shortURLService) PingDB(ctx context.Context) error {
 	if s.db == nil {
 		return fmt.Errorf("the service is running without a db")
 	}
 
-	return ping(s.db)
+	return ping(s.db, ctx)
 }
 
-func ping(db *sql.DB) error {
-	ctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+func ping(db *sql.DB, ctx context.Context) error {
+	ctx, stop := context.WithTimeout(ctx, 5*time.Second)
 	defer stop()
 
 	err := db.PingContext(ctx)

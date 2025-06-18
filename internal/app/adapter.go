@@ -102,7 +102,7 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a adapter) Ping(w http.ResponseWriter, r *http.Request) {
-	if err := a.Service.PingDB(); err != nil {
+	if err := a.Service.PingDB(r.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
