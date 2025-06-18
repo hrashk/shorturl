@@ -10,8 +10,8 @@ import (
 )
 
 type adapter struct {
-	Service service
-	log     logger
+	svc service
+	log logger
 }
 
 func newAdapter(cfg config) (adapter, error) {
@@ -46,7 +46,7 @@ func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := string(raw)
-	shortURL, err := a.Service.CreateShortURL(url)
+	shortURL, err := a.svc.CreateShortURL(url)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
@@ -60,7 +60,7 @@ func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 func (a adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
-	url, err := a.Service.LookUp(key)
+	url, err := a.svc.LookUp(key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -84,7 +84,7 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := a.Service.CreateShortURL(req.URL)
+	shortURL, err := a.svc.CreateShortURL(req.URL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to store URL: %v", err), http.StatusInternalServerError)
 		return
@@ -102,7 +102,7 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a adapter) Ping(w http.ResponseWriter, r *http.Request) {
-	if err := a.Service.PingDB(r.Context()); err != nil {
+	if err := a.svc.PingDB(r.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
