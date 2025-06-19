@@ -111,6 +111,7 @@ func (ms *MainSuite) TestServerAddress() {
 			ms.startServer(t.expected)
 
 			ms.cli.Shorten(sampleURL, app.DefaultBaseURL)
+			ms.cli.Ping()
 		})
 	}
 }
@@ -137,6 +138,7 @@ func (ms *MainSuite) TestBaseURL() {
 			ms.startServer(app.DefaultServerAddress)
 
 			ms.cli.Shorten(sampleURL, t.expected)
+			ms.cli.Ping()
 		})
 	}
 }
@@ -162,7 +164,7 @@ func (ms *MainSuite) TestFileStoragePath() {
 			}
 			ms.checkDataRestoredAfterRestart(app.DefaultServerAddress, app.DefaultBaseURL)
 			ms.FileExists(t.expected)
-			ms.cli.PingFailed()
+			ms.cli.Ping()
 		})
 	}
 }
@@ -188,7 +190,7 @@ func (ms *MainSuite) TestInMemStorage() {
 			}
 			ms.checkDataWipedAfterRestart()
 			ms.NoFileExists(app.DefaultStoragePath)
-			ms.cli.PingFailed()
+			ms.cli.Ping()
 		})
 	}
 }
@@ -200,7 +202,7 @@ func (ms *MainSuite) TestCommandArgsWithFileStorage() {
 	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
 	ms.FileExists(samplePath)
-	ms.cli.PingFailed()
+	ms.cli.Ping()
 }
 
 func (ms *MainSuite) TestCommandArgsWithDB() {
@@ -223,7 +225,7 @@ func (ms *MainSuite) TestEnvVarsWithFileStorage() {
 	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
 	ms.FileExists(samplePath)
-	ms.cli.PingFailed()
+	ms.cli.Ping()
 }
 
 func (ms *MainSuite) TestEnvVarsWithDB() {

@@ -73,7 +73,7 @@ func (s inMemStorage) LookUp(shortURL string) (url string, err error) {
 }
 
 func (s inMemStorage) Ping(ctx context.Context) error {
-	return errors.New("using in-memory db")
+	return nil
 }
 
 func newFileStorage(st storage, cfg config) (fileStorage, error) {
@@ -115,10 +115,6 @@ func (fs fileStorage) Store(key shortKey, url string) error {
 	fs.ch <- urlRec{key.uuid, key.shortURL, url}
 
 	return nil
-}
-
-func (fs fileStorage) Ping(ctx context.Context) error {
-	return errors.New("using a file storage")
 }
 
 type urlRec struct {
