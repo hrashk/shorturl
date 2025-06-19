@@ -162,14 +162,15 @@ func newPgsqlStorage(st storage, cfg config) (pst pgsqlStorage, err error) {
 		return
 	}
 
-	ctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
-	defer stop()
-	err = pst.Ping(ctx)
+	err = pst.Ping(context.Background())
 
 	return
 }
 
 func (pst pgsqlStorage) Ping(ctx context.Context) error {
+	ctx, stop := context.WithTimeout(ctx, 5*time.Second)
+	defer stop()
+
 	err := pst.db.PingContext(ctx)
 	if err != nil {
 		err = fmt.Errorf("failed to ping db: %w", err)

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"time"
 )
 
 type service interface {
@@ -51,8 +50,5 @@ func (s shortURLService) LookUp(key string) (url string, err error) {
 }
 
 func (s shortURLService) PingDB(ctx context.Context) error {
-	ctx, stop := context.WithTimeout(ctx, 5*time.Second)
-	defer stop()
-
 	return s.storage.Ping(ctx)
 }
