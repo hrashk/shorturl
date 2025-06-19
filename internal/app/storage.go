@@ -16,7 +16,7 @@ import (
 )
 
 type storage interface {
-	Store(key shortKey, url string) error
+	Store(ctx context.Context, key shortKey, url string) error
 	LookUp(shortURL string) (url string, err error)
 	Ping(ctx context.Context) error
 }
@@ -59,7 +59,7 @@ func newInMemStorage() inMemStorage {
 		data: &sync.Map{},
 	}
 }
-func (s inMemStorage) Store(key shortKey, url string) error {
+func (s inMemStorage) Store(ctx context.Context, key shortKey, url string) error {
 	s.data.Store(key.shortURL, url)
 
 	return nil
@@ -107,8 +107,8 @@ func (fs fileStorage) storeRec(file *os.File) {
 	}
 }
 
-func (fs fileStorage) Store(key shortKey, url string) error {
-	if err := fs.storage.Store(key, url); err != nil {
+func (fs fileStorage) Store(ctx context.Context, key shortKey, url string) error {
+	if err := fs.storage.Store(ctx, key, url); err != nil {
 		return err
 	}
 
@@ -143,8 +143,8 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 			err = fmt.Errorf("failed to decode record at offset %d: %w", decoder.InputOffset(), err)
 			return
 		}
-
-		if err = st.Store(shortKey{rec.UUID, rec.ShortURL}, rec.OriginalURL); err != nil {
+		err = st.Store(context.TODO(), shortKey{rec.UUID, rec.ShortURL}, rec.OriginalURL)
+		if err != nil {
 			return
 		}
 
