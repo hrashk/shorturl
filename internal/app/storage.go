@@ -197,6 +197,12 @@ func (pst pgsqlStorage) Ping(ctx context.Context) error {
 
 func (pst pgsqlStorage) createTables(ctx context.Context) error {
 	_, err := pst.db.ExecContext(ctx, createURLTable)
+	if err != nil {
+		return err
+	}
+
+	const indexQry = "CREATE INDEX IF NOT EXISTS short_url_idx ON urls (short_url)"
+	_, err = pst.db.ExecContext(ctx, indexQry)
 
 	return err
 }
