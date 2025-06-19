@@ -7,7 +7,7 @@ import (
 
 type service interface {
 	CreateShortURL(ctx context.Context, url string) (shortURL string, err error)
-	LookUp(key string) (url string, err error)
+	LookUp(ctx context.Context, key string) (url string, err error)
 	PingDB(ctx context.Context) error
 }
 
@@ -41,8 +41,8 @@ func (s shortURLService) CreateShortURL(ctx context.Context, url string) (shortU
 	return shortURL, nil
 }
 
-func (s shortURLService) LookUp(key string) (url string, err error) {
-	url, err = s.storage.LookUp(key)
+func (s shortURLService) LookUp(ctx context.Context, key string) (url string, err error) {
+	url, err = s.storage.LookUp(ctx, key)
 	if err != nil {
 		return "", fmt.Errorf("key %v not found: [%w]", key, err)
 	}

@@ -60,7 +60,7 @@ func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 func (a adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 
-	url, err := a.svc.LookUp(key)
+	url, err := a.svc.LookUp(r.Context(), key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

@@ -17,7 +17,7 @@ import (
 
 type storage interface {
 	Store(ctx context.Context, key shortKey, url string) error
-	LookUp(shortURL string) (url string, err error)
+	LookUp(ctx context.Context, shortURL string) (url string, err error)
 	Ping(ctx context.Context) error
 }
 
@@ -64,7 +64,7 @@ func (s inMemStorage) Store(ctx context.Context, key shortKey, url string) error
 
 	return nil
 }
-func (s inMemStorage) LookUp(shortURL string) (url string, err error) {
+func (s inMemStorage) LookUp(ctx context.Context, shortURL string) (url string, err error) {
 	v, ok := s.data.Load(shortURL)
 	if !ok {
 		return "", errors.New("short URL not found: " + shortURL)
