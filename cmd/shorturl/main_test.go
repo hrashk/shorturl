@@ -59,18 +59,10 @@ func (ms *MainSuite) TearDownSubTest() {
 }
 
 func (ms *MainSuite) setUp() {
-	ms.deleteFile(app.DefaultStoragePath)
-	ms.deleteFile(samplePath)
-	ms.deleteFile(anotherPath)
+	ms.srv.wipeData()
 
 	// avoid errors due to unknown flags from go test
 	os.Args = []string{os.Args[0]}
-}
-
-func (ms *MainSuite) deleteFile(path string) {
-	if err := os.Remove(path); err != nil {
-		ms.ErrorIs(err, os.ErrNotExist, "failed to delete file %s", path)
-	}
 }
 
 func (ms *MainSuite) tearDown() {

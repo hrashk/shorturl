@@ -1,12 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/hrashk/shorturl/internal/app"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -59,6 +62,36 @@ func (ms *mainServer) addr() string {
 	}
 
 	return addr
+}
+
+func (ms *mainServer) wipeData() {
+	ms.deleteFiles()
+
+	ms.wipeDB()
+}
+
+func (ms *mainServer) deleteFiles() {
+	ms.deleteFile(app.DefaultStoragePath)
+	ms.deleteFile(samplePath)
+	ms.deleteFile(anotherPath)
+}
+
+func (ms *mainServer) wipeDB() {
+	db, err := sql.Open("pgx", app.DefaultDatabaseDsn)
+	if err != nil {
+		ms.parentSuite.T().Logf("Unable to connect to db: %v", err)
+	}
+
+	_, err = db.Exec("drop table if exists urls")
+	if err != nil {
+		ms.parentSuite.T().Logf("Unable to drop table urls: %v", err)
+	}
+}
+
+func (ms *mainServer) deleteFile(path string) {
+	if err := os.Remove(path); err != nil {
+		ms.parentSuite.ErrorIs(err, os.ErrNotExist, "failed to delete file %s", path)
+	}
 }
 
 func (ms *mainServer) stop() {
