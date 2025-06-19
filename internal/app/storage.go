@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"sync"
 )
 
@@ -95,13 +94,13 @@ func (fs fileStorage) Store(key shortKey, url string) error {
 		return err
 	}
 
-	fs.ch <- urlRec{strconv.FormatUint(key.uuid, 10), key.shortURL, url}
+	fs.ch <- urlRec{key.uuid, key.shortURL, url}
 
 	return nil
 }
 
 type urlRec struct {
-	UUID        string `json:"uuid"`
+	UUID        uint64 `json:"uuid,string"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
@@ -127,18 +126,12 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 			return
 		}
 
-		var id uint64
-		id, err = strconv.ParseUint(rec.UUID, 10, 64)
-		if err != nil {
-			err = fmt.Errorf("failed to convert %s to int: %w", rec.UUID, err)
-			return
-		}
-		if err = st.Store(shortKey{id, rec.ShortURL}, rec.OriginalURL); err != nil {
+		if err = st.Store(shortKey{rec.UUID, rec.ShortURL}, rec.OriginalURL); err != nil {
 			return
 		}
 
-		if id > uuid {
-			uuid = id
+		if rec.UUID > uuid {
+			uuid = rec.UUID
 		}
 	}
 	return
