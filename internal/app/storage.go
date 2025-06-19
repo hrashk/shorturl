@@ -1,17 +1,24 @@
 package app
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
+	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type storage interface {
 	Store(key shortKey, url string) error
 	LookUp(shortURL string) (url string, err error)
+	Ping(ctx context.Context) error
 }
 
 type inMemStorage struct {
@@ -24,10 +31,17 @@ type fileStorage struct {
 	ch  chan urlRec
 }
 
+type pgsqlStorage struct {
+	storage
+	db *sql.DB
+}
+
 func newStorage(cfg config) (st storage, uuid uint64, err error) {
 	st = newInMemStorage()
 
-	if cfg.storagePath != "" && cfg.dbDsn == "" {
+	if strings.HasPrefix(cfg.dbDsn, "postgresql") {
+		st, err = newPgsqlStorage(st, cfg)
+	} else if cfg.storagePath != "" {
 		uuid, err = readFile(st, cfg.storagePath)
 		if err != nil {
 			return
@@ -56,6 +70,10 @@ func (s inMemStorage) LookUp(shortURL string) (url string, err error) {
 		return "", errors.New("short URL not found: " + shortURL)
 	}
 	return v.(string), nil
+}
+
+func (s inMemStorage) Ping(ctx context.Context) error {
+	return errors.New("using in-memory db")
 }
 
 func newFileStorage(st storage, cfg config) (fileStorage, error) {
@@ -99,6 +117,10 @@ func (fs fileStorage) Store(key shortKey, url string) error {
 	return nil
 }
 
+func (fs fileStorage) Ping(ctx context.Context) error {
+	return errors.New("using a file storage")
+}
+
 type urlRec struct {
 	UUID        uint64 `json:"uuid,string"`
 	ShortURL    string `json:"short_url"`
@@ -135,4 +157,26 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 		}
 	}
 	return
+}
+
+func newPgsqlStorage(st storage, cfg config) (pst pgsqlStorage, err error) {
+	pst = pgsqlStorage{st, nil}
+	pst.db, err = sql.Open("pgx", cfg.dbDsn)
+	if err != nil {
+		return
+	}
+
+	ctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stop()
+	err = pst.Ping(ctx)
+
+	return
+}
+
+func (pst pgsqlStorage) Ping(ctx context.Context) error {
+	err := pst.db.PingContext(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to ping db: %w", err)
+	}
+	return err
 }
