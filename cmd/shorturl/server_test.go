@@ -80,11 +80,13 @@ func (ms *mainServer) wipeDB() {
 	db, err := sql.Open("pgx", app.DefaultDatabaseDsn)
 	if err != nil {
 		ms.parentSuite.T().Logf("Unable to connect to db: %v", err)
+		return
 	}
 
 	_, err = db.Exec("drop table if exists urls")
 	if err != nil {
 		ms.parentSuite.T().Logf("Unable to drop table urls: %v", err)
+		return
 	}
 }
 
