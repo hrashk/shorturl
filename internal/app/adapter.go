@@ -46,7 +46,7 @@ func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := string(raw)
-	shortURL, err := a.svc.CreateShortURL(url)
+	shortURL, err := a.svc.CreateShortURL(r.Context(), url)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
@@ -84,7 +84,7 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := a.svc.CreateShortURL(req.URL)
+	shortURL, err := a.svc.CreateShortURL(r.Context(), req.URL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to store URL: %v", err), http.StatusInternalServerError)
 		return

@@ -7,7 +7,7 @@ import (
 )
 
 type service interface {
-	CreateShortURL(url string) (shortURL string, err error)
+	CreateShortURL(ctx context.Context, url string) (shortURL string, err error)
 	LookUp(key string) (url string, err error)
 	PingDB(ctx context.Context) error
 }
@@ -33,7 +33,7 @@ func newService(cfg config) (s service, err error) {
 	return
 }
 
-func (s shortURLService) CreateShortURL(url string) (shortURL string, err error) {
+func (s shortURLService) CreateShortURL(ctx context.Context, url string) (shortURL string, err error) {
 	key := s.keyGenerator.Generate(url)
 	if err := s.storage.Store(key, url); err != nil {
 		return "", fmt.Errorf("failed to store key %v: [%w]", key, err)
