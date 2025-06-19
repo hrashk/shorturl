@@ -209,8 +209,7 @@ func (ms *MainSuite) TestCommandArgsWithDB() {
 	os.Args = []string{"", "-a", sampleAddr, "-b", sampleBaseURL,
 		"-f", samplePath, "-d", app.DefaultDatabaseDsn}
 
-	// ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL) todo
-	ms.startServer(sampleAddr)
+	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
 	ms.NoFileExists(samplePath)
 	ms.cli.Ping()
@@ -234,8 +233,7 @@ func (ms *MainSuite) TestEnvVarsWithDB() {
 	os.Setenv(storagePathSetting.envName, samplePath)
 	os.Setenv(dbSetting.envName, app.DefaultDatabaseDsn)
 
-	// ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL) todo
-	ms.startServer(sampleAddr)
+	ms.checkDataRestoredAfterRestart(sampleAddr, sampleBaseURL)
 	ms.NoFileExists(app.DefaultStoragePath)
 	ms.NoFileExists(samplePath)
 	ms.cli.Ping()

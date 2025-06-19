@@ -32,7 +32,6 @@ type fileStorage struct {
 }
 
 type pgsqlStorage struct {
-	storage
 	db *sql.DB
 }
 
@@ -40,7 +39,7 @@ func newStorage(cfg config) (st storage, uuid uint64, err error) {
 	st = newInMemStorage()
 
 	if strings.HasPrefix(cfg.dbDsn, "postgresql") {
-		st, err = newPgsqlStorage(st, cfg)
+		st, uuid, err = newPgsqlStorage(cfg)
 	} else if cfg.storagePath != "" {
 		uuid, err = readFile(st, cfg.storagePath)
 		if err != nil {
@@ -123,6 +122,13 @@ type urlRec struct {
 	OriginalURL string `json:"original_url"`
 }
 
+const createURLTable = `
+CREATE TABLE IF NOT EXISTS urls (
+	uuid BIGINT PRIMARY KEY,
+	short_url TEXT NOT NULL,
+	original_url TEXT NOT NULL
+);`
+
 func readFile(st storage, path string) (uuid uint64, err error) {
 	file, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -155,14 +161,25 @@ func readFile(st storage, path string) (uuid uint64, err error) {
 	return
 }
 
-func newPgsqlStorage(st storage, cfg config) (pst pgsqlStorage, err error) {
-	pst = pgsqlStorage{st, nil}
+func newPgsqlStorage(cfg config) (pst pgsqlStorage, uuid uint64, err error) {
+	pst = pgsqlStorage{nil}
+
 	pst.db, err = sql.Open("pgx", cfg.dbDsn)
 	if err != nil {
 		return
 	}
 
 	err = pst.Ping(context.Background())
+	if err != nil {
+		return
+	}
+
+	err = pst.createTables(context.Background())
+	if err != nil {
+		return
+	}
+
+	uuid, err = pst.fetchLastID(context.Background())
 
 	return
 }
@@ -175,5 +192,43 @@ func (pst pgsqlStorage) Ping(ctx context.Context) error {
 	if err != nil {
 		err = fmt.Errorf("failed to ping db: %w", err)
 	}
+	return err
+}
+
+func (pst pgsqlStorage) createTables(ctx context.Context) error {
+	_, err := pst.db.ExecContext(ctx, createURLTable)
+
+	return err
+}
+
+func (pst pgsqlStorage) fetchLastID(ctx context.Context) (uint64, error) {
+	const maxQuery = "select coalesce(max(uuid),0) maxid from urls"
+	var uuid uint64
+
+	err := pst.db.QueryRowContext(ctx, maxQuery).Scan(&uuid)
+	if errors.Is(err, sql.ErrNoRows) {
+		uuid = 0
+		err = nil
+	}
+
+	return uuid, err
+}
+
+func (pst pgsqlStorage) LookUp(ctx context.Context, shortURL string) (string, error) {
+	const query = "SELECT original_url FROM urls WHERE short_url = $1"
+	var originalURL string
+	err := pst.db.QueryRowContext(ctx, query, shortURL).Scan(&originalURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = fmt.Errorf("short URL %s not found: %w", shortURL, err)
+	}
+	return originalURL, err
+}
+
+func (pst pgsqlStorage) Store(ctx context.Context, key shortKey, url string) error {
+	const query = `
+		INSERT INTO urls (uuid, short_url, original_url)
+		VALUES ($1, $2, $3)
+	`
+	_, err := pst.db.ExecContext(ctx, query, key.uuid, key.shortURL, url)
 	return err
 }
