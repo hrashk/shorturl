@@ -76,6 +76,17 @@ curl -X POST http://localhost:8080/api/shorten \
 -o some.gz
 ```
 
+## Testing
+Functional tests
+```bash
+go test -v -race ./...
+```
+
+Benchmark tests
+```bash
+go test -bench=. -run=^$ -benchmem ./...
+```
+
 ## License
 
 This project is licensed under the BSD License.
