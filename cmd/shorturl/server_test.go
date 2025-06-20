@@ -6,23 +6,25 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/hrashk/shorturl/internal/app"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mainServer struct {
-	parentSuite   *suite.Suite
+	t             testing.TB
 	origNewServer func(modifiers ...app.Configurator) (*http.Server, error)
 	server        *http.Server
 	baseURL       string
 	ch            chan struct{}
 }
 
-func newServer(parentSuite *suite.Suite) *mainServer {
-	ms := &mainServer{origNewServer: app.NewServer, parentSuite: parentSuite}
+func newServer(tb testing.TB) *mainServer {
+	ms := &mainServer{origNewServer: app.NewServer, t: tb}
 	app.NewServer = ms.spy
 
 	ms.ch = make(chan struct{}, 1)
@@ -79,20 +81,20 @@ func (ms *mainServer) deleteFiles() {
 func (ms *mainServer) wipeDB() {
 	db, err := sql.Open("pgx", app.DefaultDatabaseDsn)
 	if err != nil {
-		ms.parentSuite.T().Logf("Unable to connect to db: %v", err)
+		ms.t.Logf("Unable to connect to db: %v", err)
 		return
 	}
 
 	_, err = db.Exec("drop table if exists urls")
 	if err != nil {
-		ms.parentSuite.T().Logf("Unable to drop table urls: %v", err)
+		ms.t.Logf("Unable to drop table urls: %v", err)
 		return
 	}
 }
 
 func (ms *mainServer) deleteFile(path string) {
 	if err := os.Remove(path); err != nil {
-		ms.parentSuite.ErrorIs(err, os.ErrNotExist, "failed to delete file %s", path)
+		assert.ErrorIs(ms.t, err, os.ErrNotExist, "failed to delete file %s", path)
 	}
 }
 
@@ -120,7 +122,7 @@ func (ms *mainServer) waitForPort() {
 	for {
 		select {
 		case <-timer.C:
-			ms.parentSuite.Require().Fail("timed out connecting to server")
+			require.Fail(ms.t, "timed out connecting to server")
 			return
 		case <-ticker.C:
 			if ms.portIsOpen(timeout) {

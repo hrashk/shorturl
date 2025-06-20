@@ -38,8 +38,8 @@ func TestMainSuite(t *testing.T) {
 
 func (ms *MainSuite) SetupSuite() {
 	ms.origArgs = os.Args
-	ms.srv = newServer(&ms.Suite)
-	ms.cli = app.NewClient(&ms.Suite)
+	ms.srv = newServer(ms.T())
+	ms.cli = app.NewClient(ms.T())
 }
 
 func (ms *MainSuite) SetupTest() {

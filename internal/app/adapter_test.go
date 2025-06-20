@@ -26,7 +26,7 @@ func (as *AdapterSuite) SetupTest() {
 	as.Require().NoError(err)
 
 	as.srv = httptest.NewServer(a.handler())
-	as.cli = NewClient(&as.Suite)
+	as.cli = NewClient(as.T())
 	as.cli.BaseURL = as.srv.URL
 }
 
