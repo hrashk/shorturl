@@ -239,6 +239,55 @@ func (ms *MainSuite) TestHelp() {
 	ms.Nil(ms.srv.server)
 }
 
+func (ms *MainSuite) TestBatchShortener() {
+	payload := app.BatchRequest{
+		{
+			CorrelationID: "123e4567-e89b-12d3-a456-426614174000",
+			OriginalURL:   "https://example.com/path1",
+		},
+		{
+			CorrelationID: "123e4567-e89b-12d3-a457-426614174000",
+			OriginalURL:   "https://example.com/path2",
+		},
+		{
+			CorrelationID: "123e4567-e89b-12d3-a458-426614174000",
+			OriginalURL:   "https://example.com/path3",
+		},
+		{
+			CorrelationID: "123e4567-e89b-12d3-a459-426614174000",
+			OriginalURL:   "https://example.com/path4",
+		},
+	}
+
+	tests := []struct {
+		flag, value, expected string
+	}{
+		{"-f", "", app.DefaultStoragePath},
+		{skip, skip, samplePath},
+		{"-d", app.DefaultDatabaseDsn, samplePath},
+	}
+
+	for i, t := range tests {
+		name := fmt.Sprintf("batch %d", i+1)
+		ms.Run(name, func() {
+			if t.flag != skip {
+				os.Args = append(os.Args, t.flag, t.value)
+			}
+			ms.startServer(app.DefaultServerAddress)
+
+			var resp app.BatchResponse = ms.cli.Batch(payload)
+			ms.Require().Equal(len(payload), len(resp))
+
+			for i, req := range payload {
+				ms.Equal(req.CorrelationID, resp[i].CorrelationID)
+
+				original := ms.cli.LookUpByURL(resp[i].ShortURL)
+				ms.Equal(req.OriginalURL, original)
+			}
+		})
+	}
+}
+
 func (ms *MainSuite) checkDataRestoredAfterRestart(addr, baseURL string) {
 	ms.startServer(addr)
 	key := ms.cli.Shorten(sampleURL, baseURL)

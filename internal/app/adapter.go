@@ -30,6 +30,7 @@ func (a adapter) handler() http.Handler {
 	r.Get("/{key}", a.RedirectToOriginalURL)
 	r.Post("/", a.CreateShortURL)
 	r.Post("/api/shorten", a.ShortenAPI)
+	r.Post("/api/shorten/batch", a.ShortenBatch)
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Operation is not supported", http.StatusBadRequest)
 	})
@@ -104,5 +105,27 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 func (a adapter) Ping(w http.ResponseWriter, r *http.Request) {
 	if err := a.svc.PingDB(r.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (a adapter) ShortenBatch(w http.ResponseWriter, r *http.Request) {
+	var req BatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	resp, err := a.svc.ShortenBatch(r.Context(), req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	if err = json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, fmt.Sprintf("failed to write response: %v", err), http.StatusInternalServerError)
+		return
 	}
 }

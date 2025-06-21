@@ -9,6 +9,7 @@ type service interface {
 	CreateShortURL(ctx context.Context, url string) (shortURL string, err error)
 	LookUp(ctx context.Context, key string) (url string, err error)
 	PingDB(ctx context.Context) error
+	ShortenBatch(ctx context.Context, req BatchRequest) (BatchResponse, error)
 }
 
 type shortURLService struct {
@@ -51,4 +52,28 @@ func (s shortURLService) LookUp(ctx context.Context, key string) (url string, er
 
 func (s shortURLService) PingDB(ctx context.Context) error {
 	return s.storage.Ping(ctx)
+}
+
+type BatchRequest []struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type BatchResponse []struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+func (s shortURLService) ShortenBatch(ctx context.Context, req BatchRequest) (BatchResponse, error) {
+	resp := make(BatchResponse, len(req))
+	var err error
+
+	for i, r := range req {
+		resp[i].CorrelationID = r.CorrelationID
+		resp[i].ShortURL, err = s.CreateShortURL(ctx, r.OriginalURL)
+		if err != nil {
+			break
+		}
+	}
+	return resp, err
 }

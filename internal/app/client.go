@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -117,11 +118,24 @@ func (c Client) PostGzippedJSON(query string, body string) *http.Response {
 	return resp
 }
 
-func (c Client) LookUp(shortURL string) string {
-	resp := c.GET("/" + shortURL)
+func (c Client) LookUp(key string) string {
+	resp := c.GET("/" + key)
 	defer resp.Body.Close()
 
-	assert.Equal(c.t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code")
+	assert.Equal(c.t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code for key "+key)
+
+	loc := resp.Header.Get("Location")
+	assert.NotEmpty(c.t, loc, "Expected Location header to be set")
+
+	return loc
+}
+
+func (c Client) LookUpByURL(url string) string {
+	resp, err := c.hcl.Get(url)
+	require.NoError(c.t, err, "Failed to make request")
+	defer resp.Body.Close()
+
+	assert.Equal(c.t, http.StatusTemporaryRedirect, resp.StatusCode, "Response status code for URL "+url)
 
 	loc := resp.Header.Get("Location")
 	assert.NotEmpty(c.t, loc, "Expected Location header to be set")
@@ -171,4 +185,19 @@ func compress(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed compress data: %w", err)
 	}
 	return b.Bytes(), nil
+}
+
+func (c Client) Batch(payload BatchRequest) BatchResponse {
+	b, err := json.Marshal(payload)
+	require.NoError(c.t, err, "request to json")
+
+	resp := c.PostJSON("/api/shorten/batch", string(b))
+	defer resp.Body.Close()
+	require.Equal(c.t, http.StatusCreated, resp.StatusCode)
+
+	var br BatchResponse
+	err = json.NewDecoder(resp.Body).Decode(&br)
+	require.NoError(c.t, err, "json to response")
+
+	return br
 }
