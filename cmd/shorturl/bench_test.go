@@ -13,21 +13,26 @@ import (
 func init() {
 	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	logger := zerolog.New(io.Discard)
-	zerolog.DefaultContextLogger = &logger // If you use context logger
+	zerolog.DefaultContextLogger = &logger
 }
 
-func BenchmarkShortenInMemory(b *testing.B) {
+func setUpEmptyStorage(b *testing.B) app.Client {
 	srv := newServer(b)
 	cli := app.NewClient(b)
 
 	srv.wipeData()
 
-	os.Args = []string{os.Args[0], "-f", ""}
 	srv.start()
 	cli.BaseURL = srv.baseURL
 	b.Cleanup(func() {
 		srv.stop()
 	})
+	return cli
+}
+
+func BenchmarkShortenInMemory(b *testing.B) {
+	os.Args = []string{os.Args[0], "-f", ""}
+	cli := setUpEmptyStorage(b)
 
 	b.ResetTimer()
 	b.RunParallel(func(p *testing.PB) {
@@ -39,17 +44,8 @@ func BenchmarkShortenInMemory(b *testing.B) {
 }
 
 func BenchmarkShortenFileStorate(b *testing.B) {
-	srv := newServer(b)
-	cli := app.NewClient(b)
-
-	srv.wipeData()
-
 	os.Args = []string{os.Args[0]}
-	srv.start()
-	cli.BaseURL = srv.baseURL
-	b.Cleanup(func() {
-		srv.stop()
-	})
+	cli := setUpEmptyStorage(b)
 
 	b.ResetTimer()
 	b.RunParallel(func(p *testing.PB) {
@@ -61,17 +57,8 @@ func BenchmarkShortenFileStorate(b *testing.B) {
 }
 
 func BenchmarkShortenPostgres(b *testing.B) {
-	srv := newServer(b)
-	cli := app.NewClient(b)
-
-	srv.wipeData()
-
 	os.Args = []string{os.Args[0], "-d", app.DefaultDatabaseDsn}
-	srv.start()
-	cli.BaseURL = srv.baseURL
-	b.Cleanup(func() {
-		srv.stop()
-	})
+	cli := setUpEmptyStorage(b)
 
 	b.ResetTimer()
 	b.RunParallel(func(p *testing.PB) {
