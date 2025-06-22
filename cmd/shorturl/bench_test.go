@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"testing"
 
 	"io"
@@ -65,6 +66,26 @@ func BenchmarkShortenPostgres(b *testing.B) {
 		for p.Next() {
 			resp := cli.POST("", "text/plain", sampleURL)
 			resp.Body.Close()
+		}
+	})
+}
+
+func BenchmarkShortenBatchPostgres(b *testing.B) {
+	os.Args = []string{os.Args[0], "-d", app.DefaultDatabaseDsn}
+	cli := setUpEmptyStorage(b)
+
+	payload := make(app.BatchRequest, 100)
+	const prefix = "123e4567-e89b-12d3-a456-4266141740"
+	for i := range payload {
+		istr := strconv.Itoa(i)
+		payload[i].CorrelationID = prefix + istr
+		payload[i].OriginalURL = sampleURL + "/path" + istr
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(p *testing.PB) {
+		for p.Next() {
+			cli.Batch(payload)
 		}
 	})
 }

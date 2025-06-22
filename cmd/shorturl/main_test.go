@@ -275,7 +275,7 @@ func (ms *MainSuite) TestBatchShortener() {
 			}
 			ms.startServer(app.DefaultServerAddress)
 
-			var resp app.BatchResponse = ms.cli.Batch(payload)
+			resp := ms.cli.Batch(payload)
 			ms.Require().Equal(len(payload), len(resp))
 
 			for i, req := range payload {
