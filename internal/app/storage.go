@@ -269,12 +269,33 @@ func (pst pgsqlStorage) Store(ctx context.Context, key shortKey, url string) err
 }
 
 func (pst pgsqlStorage) StoreBatch(ctx context.Context, batch urlBatch) error {
-	var err error
+	const query = `
+		INSERT INTO urls (uuid, short_url, original_url)
+		VALUES ($1, $2, $3)
+	`
+
+	tx, err := pst.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
 	for _, b := range batch {
-		err = pst.Store(ctx, b.shortKey, b.originalURL)
+		_, err = stmt.ExecContext(ctx, b.uuid, b.shortURL, b.originalURL)
 		if err != nil {
 			break
 		}
+	}
+
+	if err == nil {
+		stmt.Close()
+		err = tx.Commit()
 	}
 
 	return err

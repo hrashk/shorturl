@@ -11,13 +11,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func init() {
+func setUpEmptyStorage(b *testing.B) app.Client {
 	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	logger := zerolog.New(io.Discard)
 	zerolog.DefaultContextLogger = &logger
-}
 
-func setUpEmptyStorage(b *testing.B) app.Client {
 	srv := newServer(b)
 	cli := app.NewClient(b)
 

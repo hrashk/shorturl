@@ -193,7 +193,10 @@ func (c Client) Batch(payload BatchRequest) BatchResponse {
 
 	resp := c.PostJSON("/api/shorten/batch", string(b))
 	defer resp.Body.Close()
-	require.Equal(c.t, http.StatusCreated, resp.StatusCode)
+	if http.StatusCreated != resp.StatusCode {
+		b, _ := io.ReadAll(resp.Body)
+		require.Equal(c.t, http.StatusCreated, resp.StatusCode, string(b))
+	}
 
 	var br BatchResponse
 	err = json.NewDecoder(resp.Body).Decode(&br)
