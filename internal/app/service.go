@@ -66,14 +66,20 @@ type BatchResponse []struct {
 
 func (s shortURLService) ShortenBatch(ctx context.Context, req BatchRequest) (BatchResponse, error) {
 	resp := make(BatchResponse, len(req))
-	var err error
+	data := make(urlBatch, len(req))
 
 	for i, r := range req {
+		key := s.keyGenerator.Generate(r.OriginalURL)
+		data[i].shortKey = key
+		data[i].originalURL = r.OriginalURL
+
 		resp[i].CorrelationID = r.CorrelationID
-		resp[i].ShortURL, err = s.CreateShortURL(ctx, r.OriginalURL)
-		if err != nil {
-			break
-		}
+		resp[i].ShortURL = s.baseURL + "/" + key.shortURL
 	}
-	return resp, err
+
+	if err := s.storage.StoreBatch(ctx, data); err != nil {
+		return nil, fmt.Errorf("failed to store batch of urls: [%w]", err)
+	}
+
+	return resp, nil
 }

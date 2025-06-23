@@ -19,6 +19,12 @@ type storage interface {
 	Store(ctx context.Context, key shortKey, url string) error
 	LookUp(ctx context.Context, shortURL string) (url string, err error)
 	Ping(ctx context.Context) error
+	StoreBatch(ctx context.Context, batch urlBatch) error
+}
+
+type urlBatch []struct {
+	shortKey
+	originalURL string
 }
 
 type inMemStorage struct {
@@ -62,6 +68,17 @@ func (s inMemStorage) Store(ctx context.Context, key shortKey, url string) error
 	s.data.Store(key.shortURL, url)
 
 	return nil
+}
+func (s inMemStorage) StoreBatch(ctx context.Context, batch urlBatch) error {
+	var err error
+	for _, b := range batch {
+		err = s.Store(ctx, b.shortKey, b.originalURL)
+		if err != nil {
+			break
+		}
+	}
+
+	return err
 }
 func (s inMemStorage) LookUp(ctx context.Context, shortURL string) (url string, err error) {
 	v, ok := s.data.Load(shortURL)
@@ -112,6 +129,18 @@ func (fs fileStorage) Store(ctx context.Context, key shortKey, url string) error
 	}
 
 	fs.ch <- urlRec{key.uuid, key.shortURL, url}
+
+	return nil
+}
+
+func (fs fileStorage) StoreBatch(ctx context.Context, batch urlBatch) error {
+	if err := fs.storage.StoreBatch(ctx, batch); err != nil {
+		return err
+	}
+
+	for _, b := range batch {
+		fs.ch <- urlRec{b.uuid, b.shortURL, b.originalURL}
+	}
 
 	return nil
 }
@@ -236,5 +265,17 @@ func (pst pgsqlStorage) Store(ctx context.Context, key shortKey, url string) err
 		VALUES ($1, $2, $3)
 	`
 	_, err := pst.db.ExecContext(ctx, query, key.uuid, key.shortURL, url)
+	return err
+}
+
+func (pst pgsqlStorage) StoreBatch(ctx context.Context, batch urlBatch) error {
+	var err error
+	for _, b := range batch {
+		err = pst.Store(ctx, b.shortKey, b.originalURL)
+		if err != nil {
+			break
+		}
+	}
+
 	return err
 }
