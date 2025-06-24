@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -35,11 +36,18 @@ func newService(cfg config) (s service, err error) {
 
 func (s shortURLService) CreateShortURL(ctx context.Context, url string) (shortURL string, err error) {
 	key := s.keyGenerator.Generate(url)
-	if err := s.storage.Store(ctx, key, url); err != nil {
-		return "", fmt.Errorf("failed to store key %v: [%w]", key, err)
+
+	err = s.storage.Store(ctx, key, url)
+	if errors.Is(err, ErrConflict) {
+		key, err = s.storage.LookUpKey(ctx, url)
+		if err == nil {
+			err = ErrConflict
+		}
+	} else if err != nil {
+		err = fmt.Errorf("failed to store key %v: [%w]", key, err)
 	}
 	shortURL = s.baseURL + "/" + key.shortURL
-	return shortURL, nil
+	return shortURL, err
 }
 
 func (s shortURLService) LookUp(ctx context.Context, key string) (url string, err error) {

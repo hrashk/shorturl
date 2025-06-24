@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -20,6 +22,7 @@ type storage interface {
 	LookUp(ctx context.Context, shortURL string) (url string, err error)
 	Ping(ctx context.Context) error
 	StoreBatch(ctx context.Context, batch urlBatch) error
+	LookUpKey(ctx context.Context, url string) (shortKey, error)
 }
 
 type urlBatch []struct {
@@ -92,6 +95,10 @@ func (s inMemStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
+func (s inMemStorage) LookUpKey(ctx context.Context, url string) (shortKey, error) {
+	return shortKey{}, nil
+}
+
 func newFileStorage(st storage, cfg config) (fileStorage, error) {
 	fs := fileStorage{
 		storage: st,
@@ -145,18 +152,15 @@ func (fs fileStorage) StoreBatch(ctx context.Context, batch urlBatch) error {
 	return nil
 }
 
+func (fs fileStorage) LookUpKey(ctx context.Context, url string) (shortKey, error) {
+	return shortKey{}, nil
+}
+
 type urlRec struct {
 	UUID        uint64 `json:"uuid,string"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
-
-const createURLTable = `
-CREATE TABLE IF NOT EXISTS urls (
-	uuid BIGINT PRIMARY KEY,
-	short_url TEXT NOT NULL,
-	original_url TEXT NOT NULL
-);`
 
 func readFile(st storage, path string) (uuid uint64, err error) {
 	file, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
@@ -224,6 +228,13 @@ func (pst pgsqlStorage) Ping(ctx context.Context) error {
 	return err
 }
 
+const createURLTable = `
+CREATE TABLE IF NOT EXISTS urls (
+	uuid BIGINT PRIMARY KEY,
+	short_url TEXT NOT NULL,
+	original_url TEXT NOT NULL UNIQUE
+);`
+
 func (pst pgsqlStorage) createTables(ctx context.Context) error {
 	_, err := pst.db.ExecContext(ctx, createURLTable)
 	if err != nil {
@@ -259,12 +270,19 @@ func (pst pgsqlStorage) LookUp(ctx context.Context, shortURL string) (string, er
 	return originalURL, err
 }
 
+var ErrConflict = errors.New("data conflict")
+
 func (pst pgsqlStorage) Store(ctx context.Context, key shortKey, url string) error {
 	const query = `
 		INSERT INTO urls (uuid, short_url, original_url)
 		VALUES ($1, $2, $3)
 	`
 	_, err := pst.db.ExecContext(ctx, query, key.uuid, key.shortURL, url)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+		err = ErrConflict
+	}
+
 	return err
 }
 
@@ -299,4 +317,15 @@ func (pst pgsqlStorage) StoreBatch(ctx context.Context, batch urlBatch) error {
 	}
 
 	return err
+}
+
+func (pst pgsqlStorage) LookUpKey(ctx context.Context, url string) (shortKey, error) {
+	const query = "SELECT uuid, short_url FROM urls WHERE original_url = $1"
+	var uuid uint64
+	var shortURL string
+	err := pst.db.QueryRowContext(ctx, query, url).Scan(&uuid, &shortURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = fmt.Errorf("original URL %s not found: %w", url, err)
+	}
+	return shortKey{uuid, shortURL}, err
 }

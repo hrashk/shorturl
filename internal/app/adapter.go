@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,13 +49,16 @@ func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 	url := string(raw)
 	shortURL, err := a.svc.CreateShortURL(r.Context(), url)
+	var status = http.StatusCreated
 
-	if err != nil {
+	if errors.Is(err, ErrConflict) {
+		status = http.StatusConflict
+	} else if err != nil {
 		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 	io.WriteString(w, shortURL)
 }
 
