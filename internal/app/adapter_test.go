@@ -62,12 +62,8 @@ func (as *AdapterSuite) TestDifferentKeys() {
 }
 
 func (as *AdapterSuite) TestShortenApi() {
-	resp := as.cli.PostJSON("/api/shorten", `{"url": "https://pkg.go.dev/cmp"}`)
-	defer resp.Body.Close()
-
-	as.Equal(http.StatusCreated, resp.StatusCode)
-	body := as.cli.readBody(resp.Body)
-	as.Contains(body, DefaultBaseURL, "body")
+	key := as.cli.ShortenAPI("https://pkg.go.dev/cmp", DefaultBaseURL)
+	as.Equal(6, len(key))
 }
 
 func (as *AdapterSuite) Info(msg string, v ...any) {

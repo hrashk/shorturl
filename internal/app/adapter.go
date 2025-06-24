@@ -90,7 +90,11 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortURL, err := a.svc.CreateShortURL(r.Context(), req.URL)
-	if err != nil {
+	var status = http.StatusCreated
+
+	if errors.Is(err, ErrConflict) {
+		status = http.StatusConflict
+	} else if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to store URL: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -98,7 +102,7 @@ func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
 	resp := ShortURLResponse{shortURL}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 
 	if err = json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, fmt.Sprintf("failed to write response: %v", err), http.StatusInternalServerError)

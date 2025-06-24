@@ -299,6 +299,15 @@ func (ms *MainSuite) TestDuplicateOriginalURL() {
 	assert.Equal(ms.T(), key, key2)
 }
 
+func (ms *MainSuite) TestDuplicateOriginalURLAPI() {
+	os.Args = append(os.Args, "-d", app.DefaultDatabaseDsn)
+	ms.startServer(app.DefaultServerAddress)
+
+	key := ms.cli.ShortenAPI(sampleAddr, app.DefaultBaseURL)
+	key2 := ms.cli.ShortenAPIConflict(sampleAddr, app.DefaultBaseURL)
+	assert.Equal(ms.T(), key, key2)
+}
+
 func (ms *MainSuite) checkDataRestoredAfterRestart(addr, baseURL string) {
 	ms.startServer(addr)
 	key := ms.cli.Shorten(sampleURL, baseURL)

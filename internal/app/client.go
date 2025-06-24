@@ -39,10 +39,22 @@ func (c Client) Shorten(url, baseURL string) string {
 	return c.extractKey(baseURL, body)
 }
 
+func (c Client) ShortenAPI(url, baseURL string) string {
+	body := c.callShortenerAPI(url, http.StatusCreated)
+
+	return c.extractKeyAPI(baseURL, body)
+}
+
 func (c Client) ShortenConflict(url, baseURL string) string {
 	body := c.callShortener(url, http.StatusConflict)
 
 	return c.extractKey(baseURL, body)
+}
+
+func (c Client) ShortenAPIConflict(url, baseURL string) string {
+	body := c.callShortenerAPI(url, http.StatusConflict)
+
+	return c.extractKeyAPI(baseURL, body)
 }
 
 func (c Client) extractKey(baseURL string, body string) string {
@@ -55,8 +67,32 @@ func (c Client) extractKey(baseURL string, body string) string {
 	return key
 }
 
+func (c Client) extractKeyAPI(baseURL string, body string) string {
+	var resp ShortURLResponse
+	err := json.Unmarshal([]byte(body), &resp)
+	require.NoError(c.t, err, "failed to unmarshal the api response")
+
+	assert.Regexp(c.t, "^"+baseURL, resp.Result, "Redirect URL")
+
+	idx := strings.LastIndex(resp.Result, "/")
+	key := resp.Result[idx+1:]
+	assert.GreaterOrEqual(c.t, len(key), 6, "Expected key length to be at least 6")
+
+	return key
+}
+
 func (c Client) callShortener(url string, expectedStatus int) string {
 	resp := c.POST("", "text/plain", url)
+	defer resp.Body.Close()
+
+	assert.Equal(c.t, expectedStatus, resp.StatusCode, "Response status code")
+
+	return c.readBody(resp.Body)
+}
+
+func (c Client) callShortenerAPI(url string, expectedStatus int) string {
+	req := ShortURLRequest{url}
+	resp := c.PostJSON("/api/shorten", req)
 	defer resp.Body.Close()
 
 	assert.Equal(c.t, expectedStatus, resp.StatusCode, "Response status code")
@@ -78,8 +114,11 @@ func (c Client) POST(query string, contentType string, body string) *http.Respon
 	return resp
 }
 
-func (c Client) PostJSON(query string, body string) *http.Response {
-	return c.POST(query, ContentTypeJSON, body)
+func (c Client) PostJSON(query string, body any) *http.Response {
+	b, err := json.Marshal(body)
+	require.NoError(c.t, err, "request to json")
+
+	return c.POST(query, ContentTypeJSON, string(b))
 }
 
 func (c Client) PUT(query string, contentType string, body string) *http.Response {
@@ -194,10 +233,7 @@ func compress(data []byte) ([]byte, error) {
 }
 
 func (c Client) Batch(payload BatchRequest) BatchResponse {
-	b, err := json.Marshal(payload)
-	require.NoError(c.t, err, "request to json")
-
-	resp := c.PostJSON("/api/shorten/batch", string(b))
+	resp := c.PostJSON("/api/shorten/batch", payload)
 	defer resp.Body.Close()
 	if http.StatusCreated != resp.StatusCode {
 		b, _ := io.ReadAll(resp.Body)
@@ -205,7 +241,7 @@ func (c Client) Batch(payload BatchRequest) BatchResponse {
 	}
 
 	var br BatchResponse
-	err = json.NewDecoder(resp.Body).Decode(&br)
+	err := json.NewDecoder(resp.Body).Decode(&br)
 	require.NoError(c.t, err, "json to response")
 
 	return br
