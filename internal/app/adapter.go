@@ -40,26 +40,53 @@ func (a adapter) handler() http.Handler {
 }
 
 func (a adapter) CreateShortURL(w http.ResponseWriter, r *http.Request) {
+	url, err := originalURL(r)
+	if err != nil {
+		badRequest(w, err)
+		return
+	}
+
+	shortURL, err := a.svc.CreateShortURL(r.Context(), url)
+
+	if errors.Is(err, ErrConflict) {
+		conflict(w, shortURL)
+	} else if err != nil {
+		serverError(w, err)
+	} else {
+		created(w, shortURL)
+	}
+}
+
+func conflict(w http.ResponseWriter, shortURL string) {
+	w.WriteHeader(http.StatusConflict)
+	io.WriteString(w, shortURL)
+}
+
+func created(w http.ResponseWriter, shortURL string) {
+	w.WriteHeader(http.StatusCreated)
+	io.WriteString(w, shortURL)
+}
+
+func serverError(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+func badRequest(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusBadRequest)
+}
+
+func notFound(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusNotFound)
+}
+
+func originalURL(r *http.Request) (string, error) {
 	raw, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
-		return
+		return "", fmt.Errorf("failed to read request body: %w", err)
 	}
 
-	url := string(raw)
-	shortURL, err := a.svc.CreateShortURL(r.Context(), url)
-	var status = http.StatusCreated
-
-	if errors.Is(err, ErrConflict) {
-		status = http.StatusConflict
-	} else if err != nil {
-		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(status)
-	io.WriteString(w, shortURL)
+	return string(raw), nil
 }
 
 func (a adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +94,7 @@ func (a adapter) RedirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := a.svc.LookUp(r.Context(), key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		notFound(w, err)
 		return
 	}
 
@@ -83,57 +110,84 @@ type ShortURLResponse struct {
 }
 
 func (a adapter) ShortenAPI(w http.ResponseWriter, r *http.Request) {
-	var req ShortURLRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)
+	req, err := bind(r)
+	if err != nil {
+		badRequest(w, err)
 		return
 	}
 
 	shortURL, err := a.svc.CreateShortURL(r.Context(), req.URL)
-	var status = http.StatusCreated
 
 	if errors.Is(err, ErrConflict) {
-		status = http.StatusConflict
-	} else if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to store URL: %v", err), http.StatusInternalServerError)
-		return
+		err = conflictAPI(w, shortURL)
+	} else if err == nil {
+		err = createdAPI(w, shortURL)
 	}
 
-	resp := ShortURLResponse{shortURL}
+	if err != nil {
+		serverError(w, err)
+	}
+}
 
+func bind(r *http.Request) (ShortURLRequest, error) {
+	var req ShortURLRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+
+	if err != nil {
+		err = fmt.Errorf("unable to decode body: %w", err)
+	}
+	return req, err
+}
+
+func createdAPI(w http.ResponseWriter, shortURL string) error {
+	resp := ShortURLResponse{shortURL}
+	return writeJSON(w, resp, http.StatusCreated)
+}
+
+func conflictAPI(w http.ResponseWriter, shortURL string) error {
+	resp := ShortURLResponse{shortURL}
+	return writeJSON(w, resp, http.StatusConflict)
+}
+
+func writeJSON(w http.ResponseWriter, resp any, status int) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	if err = json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, fmt.Sprintf("failed to write response: %v", err), http.StatusInternalServerError)
-		return
+	err := json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		err = fmt.Errorf("unable to write response: %w", err)
 	}
+	return err
 }
 
 func (a adapter) Ping(w http.ResponseWriter, r *http.Request) {
 	if err := a.svc.PingDB(r.Context()); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 	}
 }
 
 func (a adapter) ShortenBatch(w http.ResponseWriter, r *http.Request) {
-	var req BatchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("failed to read body: %v", err), http.StatusBadRequest)
+	req, err := bindBatch(r)
+	if err != nil {
+		badRequest(w, err)
 		return
 	}
 
 	resp, err := a.svc.ShortenBatch(r.Context(), req)
+	if err == nil {
+		err = writeJSON(w, resp, http.StatusCreated)
+	}
+
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to store URL: %v", err), http.StatusInternalServerError)
-		return
+		serverError(w, err)
 	}
+}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	if err = json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, fmt.Sprintf("failed to write response: %v", err), http.StatusInternalServerError)
-		return
+func bindBatch(r *http.Request) (BatchRequest, error) {
+	var req BatchRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		err = fmt.Errorf("unable to decode batch request: %w", err)
 	}
+	return req, err
 }
