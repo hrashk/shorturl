@@ -34,7 +34,13 @@ func NewClient(tb testing.TB) Client {
 }
 
 func (c Client) Shorten(url, baseURL string) string {
-	body := c.callShortener(url)
+	body := c.callShortener(url, http.StatusCreated)
+
+	return c.extractKey(baseURL, body)
+}
+
+func (c Client) ShortenConflict(url, baseURL string) string {
+	body := c.callShortener(url, http.StatusConflict)
 
 	return c.extractKey(baseURL, body)
 }
@@ -49,11 +55,11 @@ func (c Client) extractKey(baseURL string, body string) string {
 	return key
 }
 
-func (c Client) callShortener(url string) string {
+func (c Client) callShortener(url string, expectedStatus int) string {
 	resp := c.POST("", "text/plain", url)
 	defer resp.Body.Close()
 
-	assert.Equal(c.t, http.StatusCreated, resp.StatusCode, "Response status code")
+	assert.Equal(c.t, expectedStatus, resp.StatusCode, "Response status code")
 
 	return c.readBody(resp.Body)
 }

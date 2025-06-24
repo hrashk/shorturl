@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hrashk/shorturl/internal/app"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -71,6 +72,7 @@ func (ms *MainSuite) tearDown() {
 	os.Unsetenv(addrSetting.envName)
 	os.Unsetenv(baseURLSetting.envName)
 	os.Unsetenv(storagePathSetting.envName)
+	os.Unsetenv(dbSetting.envName)
 
 	ms.srv.stop()
 }
@@ -286,6 +288,15 @@ func (ms *MainSuite) TestBatchShortener() {
 			}
 		})
 	}
+}
+
+func (ms *MainSuite) TestDuplicateOriginalURL() {
+	os.Args = append(os.Args, "-d", app.DefaultDatabaseDsn)
+	ms.startServer(app.DefaultServerAddress)
+
+	key := ms.cli.Shorten(sampleAddr, app.DefaultBaseURL)
+	key2 := ms.cli.ShortenConflict(sampleAddr, app.DefaultBaseURL)
+	assert.Equal(ms.T(), key, key2)
 }
 
 func (ms *MainSuite) checkDataRestoredAfterRestart(addr, baseURL string) {
